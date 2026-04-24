@@ -90,6 +90,12 @@ fn cmd_check(path: &Path) -> Result<()> {
 
 fn cmd_run(args: RunArgs) -> Result<()> {
     let mut config = load_config(&args.path)?;
+    let base_dir = args
+        .path
+        .parent()
+        .map(|p| if p.as_os_str().is_empty() { Path::new(".") } else { p })
+        .unwrap_or_else(|| Path::new("."))
+        .to_path_buf();
 
     if let Some(expected) = &args.subject
         && expected != &config.subject.name
@@ -123,7 +129,7 @@ fn cmd_run(args: RunArgs) -> Result<()> {
         for task in tasks {
             for model in &config.run.models {
                 for _ in 0..config.run.n {
-                    let trial = run_trial(&config, task, model)
+                    let trial = run_trial(&config, task, model, &base_dir)
                         .with_context(|| format!("run_trial for {}/{}", task.id, model))?;
                     let verdict = score_trial(&config, task, &trial, &judge_model)
                         .with_context(|| format!("score_trial for {}/{}", task.id, model))?;

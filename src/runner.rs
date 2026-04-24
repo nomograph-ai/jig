@@ -8,6 +8,7 @@ use crate::schema::{AgentShape, Task};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader};
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
@@ -159,8 +160,20 @@ pub fn parse_event_stream(
 
 /// Spawn claude and capture the trial. Errors only on IO / spawn
 /// failures; agent failures surface inside `TrialResult`.
-pub fn run_trial(config: &AgentShape, task: &Task, model: &str) -> Result<TrialResult> {
-    if !run_fixture_cmd(&config.fixture.setup, &config.fixture.workdir) {
+///
+/// `base_dir` anchors relative fixture and workdir paths (typically
+/// the directory containing the `agent-shape.toml`). Absolute paths
+/// in the config are respected as-is.
+pub fn run_trial(
+    config: &AgentShape,
+    task: &Task,
+    model: &str,
+    base_dir: &Path,
+) -> Result<TrialResult> {
+    let workdir = resolve_path(&config.fixture.workdir, base_dir);
+    let setup = resolve_path(&config.fixture.setup, base_dir);
+
+    if !run_fixture_cmd(setup.to_string_lossy().as_ref(), base_dir) {
         return Ok(TrialResult::failed_setup(&task.id, model));
     }
 
@@ -178,10 +191,10 @@ pub fn run_trial(config: &AgentShape, task: &Task, model: &str) -> Result<TrialR
             "--model",
             model,
             "--add-dir",
-            &config.fixture.workdir,
+            workdir.to_string_lossy().as_ref(),
         ])
         .arg(&task.prompt)
-        .current_dir(&config.fixture.workdir)
+        .current_dir(&workdir)
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
@@ -211,7 +224,8 @@ pub fn run_trial(config: &AgentShape, task: &Task, model: &str) -> Result<TrialR
     let duration_ms = start.elapsed().as_millis() as u64;
 
     if let Some(cleanup) = &config.fixture.cleanup {
-        let _ = run_fixture_cmd(cleanup, &config.fixture.workdir);
+        let resolved = resolve_path(cleanup, base_dir);
+        let _ = run_fixture_cmd(resolved.to_string_lossy().as_ref(), base_dir);
     }
 
     let mut result = parse_event_stream(collected.into_iter(), &task.id, model, config.run.turn_cap);
@@ -224,14 +238,27 @@ pub fn run_trial(config: &AgentShape, task: &Task, model: &str) -> Result<TrialR
     Ok(result)
 }
 
-fn run_fixture_cmd(cmd: &str, workdir: &str) -> bool {
+fn run_fixture_cmd(cmd: &str, cwd: &Path) -> bool {
     Command::new("sh")
         .arg("-c")
         .arg(cmd)
-        .current_dir(workdir)
+        .current_dir(cwd)
         .status()
         .map(|s| s.success())
         .unwrap_or(false)
+}
+
+/// Resolve a possibly-relative path against a base directory.
+/// Absolute paths and anything starting with `~` or `$` is returned
+/// unchanged (the shell will handle the latter when the path is fed
+/// to `sh -c`).
+fn resolve_path(path: &str, base: &Path) -> PathBuf {
+    let p = Path::new(path);
+    if p.is_absolute() || path.starts_with('~') || path.starts_with('$') {
+        p.to_path_buf()
+    } else {
+        base.join(p)
+    }
 }
 
 #[cfg(test)]
@@ -281,6 +308,24 @@ mod tests {
         assert!(result.is_error);
         assert_eq!(result.terminal_reason, "no_result");
         assert!(result.bash_commands.is_empty());
+    }
+
+    #[test]
+    fn resolve_path_absolute_is_passthrough() {
+        let r = resolve_path("/tmp/fx", Path::new("/repo"));
+        assert_eq!(r, PathBuf::from("/tmp/fx"));
+    }
+
+    #[test]
+    fn resolve_path_relative_anchors_to_base() {
+        let r = resolve_path("fixtures/fx", Path::new("/repo"));
+        assert_eq!(r, PathBuf::from("/repo/fixtures/fx"));
+    }
+
+    #[test]
+    fn resolve_path_env_var_is_passthrough() {
+        let r = resolve_path("$HOME/fx", Path::new("/repo"));
+        assert_eq!(r, PathBuf::from("$HOME/fx"));
     }
 
     #[test]
