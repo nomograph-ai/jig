@@ -1,0 +1,7 @@
+{"type":"system","subtype":"init","cwd":"/tmp/fx","session_id":"00000000-0000-0000-0000-000000000000","tools":["Bash"],"model":"claude-sonnet-4-6","permissionMode":"bypassPermissions"}
+{"type":"assistant","message":{"model":"claude-sonnet-4-6","role":"assistant","content":[{"type":"tool_use","id":"toolu_1","name":"Bash","input":{"command":"ls","description":"list"}}]}}
+{"type":"user","message":{"role":"user","content":[{"tool_use_id":"toolu_1","type":"tool_result","content":"file1\nfile2","is_error":false}]}}
+{"type":"assistant","message":{"model":"claude-sonnet-4-6","role":"assistant","content":[{"type":"tool_use","id":"toolu_2","name":"Bash","input":{"command":"pwd","description":"pwd"}}]}}
+{"type":"user","message":{"role":"user","content":[{"tool_use_id":"toolu_2","type":"tool_result","content":"/tmp/fx","is_error":false}]}}
+{"type":"assistant","message":{"model":"claude-sonnet-4-6","role":"assistant","content":[{"type":"text","text":"done"}]}}
+{"type":"result","subtype":"success","is_error":false,"duration_ms":1234,"num_turns":3,"result":"done","terminal_reason":"completed","total_cost_usd":0.0125,"usage":{"input_tokens":42,"output_tokens":100}}
