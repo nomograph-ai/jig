@@ -6,5 +6,6 @@
 //! measure first-try command success, tokens, turns, and
 //! invented-command count.
 
+pub mod judge;
 pub mod runner;
 pub mod schema;
