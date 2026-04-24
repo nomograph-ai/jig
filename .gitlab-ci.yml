@@ -1,0 +1,10 @@
+include:
+  - template: Jobs/Secret-Detection.gitlab-ci.yml
+  - component: gitlab.com/nomograph/pipeline/rust-cli@v2.4.6
+    inputs:
+      binary_name: jig
+      project_description: "Agent-shape testing harness: claude-in-the-loop batteries, LLM-as-judge scoring."
+      audit_allow_failure: false
+      crates_publish: true
+
+stages: [test, build, sign, publish, release, notify]
