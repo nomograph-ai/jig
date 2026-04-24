@@ -195,6 +195,10 @@ pub fn run_trial(
         ])
         .arg(&task.prompt)
         .current_dir(&workdir)
+        // Prevent session/instance leakage: any SYNTHESIST_* var from
+        // the parent shell would make the agent see the wrong DB.
+        .env_remove("SYNTHESIST_SESSION")
+        .env_remove("SYNTHESIST_DIR")
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
@@ -243,6 +247,8 @@ fn run_fixture_cmd(cmd: &str, cwd: &Path) -> bool {
         .arg("-c")
         .arg(cmd)
         .current_dir(cwd)
+        .env_remove("SYNTHESIST_SESSION")
+        .env_remove("SYNTHESIST_DIR")
         .status()
         .map(|s| s.success())
         .unwrap_or(false)
