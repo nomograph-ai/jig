@@ -2,6 +2,7 @@
 
 use anyhow::{Context, Result, anyhow};
 use clap::{Parser, Subcommand, ValueEnum};
+use jig::checkpoint::{self, CheckpointEntry};
 use jig::judge::{JudgeResult, score_trial};
 use jig::report::{Report, ScoredTrial, Section, build_report, emit_json, emit_markdown};
 use jig::runner::{TrialResult, run_trial};
@@ -69,6 +70,12 @@ struct RunArgs {
     /// Output format.
     #[arg(long, value_enum, default_value_t = Format::Markdown)]
     format: Format,
+
+    /// Append each completed (trial, verdict) pair to this JSONL.
+    /// On restart, already-recorded cells are skipped — a killed
+    /// run resumes without losing prior work.
+    #[arg(long)]
+    checkpoint: Option<PathBuf>,
 }
 
 #[derive(Copy, Clone, Debug, ValueEnum)]
@@ -138,6 +145,22 @@ fn cmd_run(args: RunArgs) -> Result<()> {
 
     let sections = select_sections(args.tuning_only, args.holdout_only);
 
+    let prior: Vec<CheckpointEntry> = match &args.checkpoint {
+        Some(p) => {
+            let loaded = checkpoint::load(p)
+                .with_context(|| format!("load checkpoint {}", p.display()))?;
+            if !loaded.is_empty() {
+                eprintln!(
+                    "[jig] resuming from checkpoint: {} prior entries in {}",
+                    loaded.len(),
+                    p.display()
+                );
+            }
+            loaded
+        }
+        None => Vec::new(),
+    };
+
     let mut scored_owned: Vec<(Section, TrialResult, JudgeResult)> = Vec::new();
 
     for section in &sections {
@@ -150,11 +173,44 @@ fn cmd_run(args: RunArgs) -> Result<()> {
         }
         for task in tasks {
             for model in &config.run.models {
-                for _ in 0..config.run.n {
+                for i in 0..config.run.n {
+                    if let Some(e) =
+                        checkpoint::has_entry(&prior, *section, &task.id, model, i)
+                    {
+                        scored_owned.push((*section, e.trial.clone(), e.verdict.clone()));
+                        continue;
+                    }
+                    eprintln!(
+                        "[jig] trial {}/{} ({}/{}) i={} ...",
+                        section_label(*section),
+                        task.id,
+                        model,
+                        config.run.n,
+                        i
+                    );
                     let trial = run_trial(&config, task, model, &base_dir)
                         .with_context(|| format!("run_trial for {}/{}", task.id, model))?;
                     let verdict = score_trial(&config, task, &trial, &judge_model)
                         .with_context(|| format!("score_trial for {}/{}", task.id, model))?;
+                    eprintln!(
+                        "[jig] trial done: score={:.2} turns={} tokens={} invented={}",
+                        verdict.first.score,
+                        trial.num_turns,
+                        trial.input_tokens + trial.output_tokens,
+                        verdict.first.invented_commands.len()
+                    );
+                    if let Some(p) = &args.checkpoint {
+                        let entry = CheckpointEntry {
+                            section: *section,
+                            task_id: task.id.clone(),
+                            model: model.clone(),
+                            trial_index: i,
+                            trial: trial.clone(),
+                            verdict: verdict.clone(),
+                        };
+                        checkpoint::append(p, &entry)
+                            .with_context(|| format!("append checkpoint {}", p.display()))?;
+                    }
                     scored_owned.push((*section, trial, verdict));
                 }
             }
@@ -173,6 +229,13 @@ fn cmd_run(args: RunArgs) -> Result<()> {
     let ts = current_iso_timestamp();
     let report = build_report(&config, &scored_view, ts, judge_model);
     emit(&report, args.format, args.output.as_deref())
+}
+
+fn section_label(s: Section) -> &'static str {
+    match s {
+        Section::Tuning => "tuning",
+        Section::Holdout => "holdout",
+    }
 }
 
 fn select_sections(tuning_only: bool, holdout_only: bool) -> Vec<Section> {
