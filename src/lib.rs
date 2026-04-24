@@ -7,5 +7,6 @@
 //! invented-command count.
 
 pub mod judge;
+pub mod report;
 pub mod runner;
 pub mod schema;
