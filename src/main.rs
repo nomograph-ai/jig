@@ -26,6 +26,14 @@ enum Command {
         #[arg(default_value = "agent-shape.toml")]
         path: PathBuf,
     },
+    /// Render a previously-emitted JSON report as markdown.
+    Render {
+        /// Path to the JSON report.
+        path: PathBuf,
+        /// Write markdown here instead of stdout.
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
 }
 
 #[derive(Parser, Debug)]
@@ -74,7 +82,21 @@ fn main() -> Result<()> {
     match cli.cmd {
         Command::Check { path } => cmd_check(&path),
         Command::Run(args) => cmd_run(args),
+        Command::Render { path, output } => cmd_render(&path, output.as_deref()),
     }
+}
+
+fn cmd_render(json_path: &Path, output: Option<&Path>) -> Result<()> {
+    let raw = fs::read_to_string(json_path)
+        .with_context(|| format!("read {}", json_path.display()))?;
+    let report: Report = serde_json::from_str(&raw)
+        .with_context(|| format!("parse {}", json_path.display()))?;
+    let md = emit_markdown(&report);
+    match output {
+        Some(p) => fs::write(p, md).with_context(|| format!("write {}", p.display()))?,
+        None => println!("{md}"),
+    }
+    Ok(())
 }
 
 fn cmd_check(path: &Path) -> Result<()> {
