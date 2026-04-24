@@ -1,0 +1,110 @@
+# Example agent-shape.toml
+#
+# Subject tools ship one of these at their repo root. `jig` reads it to
+# drive the runner, judge, and report emitter.
+
+[subject]
+name = "synthesist"
+binary = "synthesist"
+description = "Specification graph manager. Trees, specs, tasks, discoveries, campaigns, sessions, claim substrate."
+version_pin = "5.1.0"
+
+[fixture]
+# Idempotent setup: run before every trial so state is isolated.
+setup = "scripts/fixture-setup.sh"
+cleanup = "scripts/fixture-cleanup.sh"
+workdir = "fixtures/synthesist-realistic"
+
+[run]
+n = 10
+models = ["claude-opus-4-7", "claude-sonnet-4-6"]
+# Cap at 3 turns per lever canary-bench finding: correction loops
+# decay exponentially after 2-3 turns.
+turn_cap = 3
+timeout_seconds = 180
+
+[judge]
+model = "claude-haiku-4-5"
+double_score = true
+required_fields = [
+  "score",
+  "first_command",
+  "first_command_existed",
+  "completed",
+  "invented_commands",
+  "fallback_to_sql",
+  "reasoning",
+]
+rubric = """
+You are judging whether an agent completed a CLI task correctly.
+
+Score on a 4-point rubric:
+  1.00  completed correctly, first command attempt was real and worked
+  0.50  completed correctly, but reached for non-existent commands first
+  0.25  completed via raw sql/bash/grep fallback instead of the tool
+  0.00  did not complete
+
+For each transcript, identify:
+  - first_command:         the exact shell command the agent first tried
+  - first_command_existed: whether that command exists in the tool's CLI
+  - completed:             did the agent finish the stated task
+  - invented_commands:     list every non-existent command the agent tried
+  - fallback_to_sql:       did the agent ever invoke sqlite, psql, grep, or awk on the tool's internal files
+  - reasoning:             one short paragraph
+
+Respond in strict JSON with exactly the fields listed above.
+"""
+
+# Tuning tasks: the designer iterates against these while shaping the
+# tool. They WILL overfit. That's expected and documented.
+[[tasks.tuning]]
+id = "exploration-01"
+summary = "What's going on in this project?"
+prompt = "You are looking at an unfamiliar nomograph project. Use synthesist to give me a quick overview of what is currently being worked on."
+success_criteria = [
+  "Agent invokes `synthesist status` within the first 2 commands",
+  "Agent does not invoke raw sqlite or grep",
+]
+author = "andrew@dunn.dev"
+created_at = "2026-04-24"
+sealed_against_tag = "synthesist-v5.1.0"
+
+[[tasks.tuning]]
+id = "cross-tree-query-01"
+summary = "Find all gkg-related work across trees"
+prompt = "Find every spec whose name mentions 'gkg' across every tree in this synthesist instance."
+success_criteria = [
+  "Agent does not invoke raw sqlite",
+  "Agent does not loop `spec list` per tree unless there is no better alternative",
+]
+author = "andrew@dunn.dev"
+created_at = "2026-04-24"
+sealed_against_tag = "synthesist-v5.1.0"
+
+[[tasks.tuning]]
+id = "resume-work-01"
+summary = "Pick up where the last session left off"
+prompt = "There is a session in flight in this synthesist instance. Show me which tasks it owns and what phase it is in."
+success_criteria = [
+  "Agent identifies the active session within the first 2 commands",
+]
+author = "andrew@dunn.dev"
+created_at = "2026-04-24"
+sealed_against_tag = "synthesist-v5.1.0"
+
+[[tasks.tuning]]
+id = "session-drill-down-01"
+summary = "Enumerate claims written under a specific session"
+prompt = "A session named 'lever-compliance' recently wrote several claims. List every claim it wrote so I can reconstruct what happened in that session."
+success_criteria = [
+  "Agent does not invoke raw sqlite",
+  "Agent uses an existing synthesist read command if one exists",
+]
+author = "andrew@dunn.dev"
+created_at = "2026-04-24"
+sealed_against_tag = "synthesist-v5.1.0"
+
+# Hold-out tasks: intentionally empty in v1. Populated by authors who
+# have not seen tuning-set results, proving separation. The schema
+# above supports them; the corpus comes later.
+# [[tasks.holdout]]  (none yet)
