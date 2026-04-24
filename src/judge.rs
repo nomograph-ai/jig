@@ -8,18 +8,34 @@
 use crate::runner::TrialResult;
 use crate::schema::{AgentShape, Task};
 use anyhow::{Context, Result, anyhow};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::io::Write;
 use std::process::{Command, Stdio};
+
+fn nullable_bool<'de, D: Deserializer<'de>>(de: D) -> Result<bool, D::Error> {
+    Ok(Option::<bool>::deserialize(de)?.unwrap_or(false))
+}
+
+fn nullable_string_vec<'de, D: Deserializer<'de>>(
+    de: D,
+) -> Result<Vec<String>, D::Error> {
+    Ok(Option::<Vec<String>>::deserialize(de)?.unwrap_or_default())
+}
 
 /// One judge's verdict on one trial.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct JudgeScore {
     pub score: f64,
-    pub first_command: String,
+    /// None when the agent never invoked Bash (the judge answers null).
+    #[serde(default)]
+    pub first_command: Option<String>,
+    #[serde(default, deserialize_with = "nullable_bool")]
     pub first_command_existed: bool,
+    #[serde(default, deserialize_with = "nullable_bool")]
     pub completed: bool,
+    #[serde(default, deserialize_with = "nullable_string_vec")]
     pub invented_commands: Vec<String>,
+    #[serde(default, deserialize_with = "nullable_bool")]
     pub fallback_to_sql: bool,
     pub reasoning: String,
 }
@@ -206,7 +222,7 @@ mod tests {
     fn sample_score() -> JudgeScore {
         JudgeScore {
             score: 0.5,
-            first_command: "synthesist tree show".into(),
+            first_command: Some("synthesist tree show".into()),
             first_command_existed: false,
             completed: true,
             invented_commands: vec!["synthesist tree show".into()],
@@ -251,6 +267,23 @@ mod tests {
     fn rejects_missing_fields() {
         let raw = r#"{"score":0.5}"#;
         assert!(parse_judge_response(raw).is_err());
+    }
+
+    #[test]
+    fn accepts_null_first_command() {
+        let raw = r#"{"score":0.0,"first_command":null,"first_command_existed":false,"completed":false,"invented_commands":[],"fallback_to_sql":false,"reasoning":"agent ran no commands"}"#;
+        let parsed = parse_judge_response(raw).unwrap();
+        assert!(parsed.first_command.is_none());
+    }
+
+    #[test]
+    fn accepts_null_bool_and_vec_fields() {
+        let raw = r#"{"score":0.0,"first_command":null,"first_command_existed":null,"completed":null,"invented_commands":null,"fallback_to_sql":null,"reasoning":"everything null"}"#;
+        let parsed = parse_judge_response(raw).unwrap();
+        assert!(!parsed.first_command_existed);
+        assert!(!parsed.completed);
+        assert!(parsed.invented_commands.is_empty());
+        assert!(!parsed.fallback_to_sql);
     }
 
     #[test]

@@ -321,7 +321,7 @@ mod tests {
     ) -> JudgeResult {
         let s = JudgeScore {
             score,
-            first_command: "x".into(),
+            first_command: Some("x".into()),
             first_command_existed: true,
             completed,
             invented_commands: invented.into_iter().map(String::from).collect(),

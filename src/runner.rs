@@ -193,6 +193,9 @@ pub fn run_trial(
             "--add-dir",
             workdir.to_string_lossy().as_ref(),
         ])
+        // `--add-dir` is variadic; the separator stops clap from
+        // consuming the prompt as another dir.
+        .arg("--")
         .arg(&task.prompt)
         .current_dir(&workdir)
         // Prevent session/instance leakage: any SYNTHESIST_* var from
