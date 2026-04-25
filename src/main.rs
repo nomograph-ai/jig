@@ -35,6 +35,28 @@ enum Command {
         #[arg(long)]
         output: Option<PathBuf>,
     },
+    /// Re-score the trial transcripts in a checkpoint against the
+    /// (now-updated) rubric in the TOML, without re-running the
+    /// expensive agent trials. Writes a new checkpoint and report.
+    Rejudge {
+        /// Path to the agent-shape.toml whose rubric to use.
+        toml: PathBuf,
+        /// Path to the input checkpoint JSONL.
+        #[arg(long)]
+        from: PathBuf,
+        /// Path to the output (rejudged) checkpoint JSONL.
+        #[arg(long)]
+        to: PathBuf,
+        /// Override the judge model.
+        #[arg(long)]
+        judge_model: Option<String>,
+        /// Where to write the corrected report.
+        #[arg(long)]
+        output: Option<PathBuf>,
+        /// Output format.
+        #[arg(long, value_enum, default_value_t = Format::Json)]
+        format: Format,
+    },
 }
 
 #[derive(Parser, Debug)]
@@ -90,7 +112,108 @@ fn main() -> Result<()> {
         Command::Check { path } => cmd_check(&path),
         Command::Run(args) => cmd_run(args),
         Command::Render { path, output } => cmd_render(&path, output.as_deref()),
+        Command::Rejudge {
+            toml,
+            from,
+            to,
+            judge_model,
+            output,
+            format,
+        } => cmd_rejudge(&toml, &from, &to, judge_model, output.as_deref(), format),
     }
+}
+
+fn cmd_rejudge(
+    toml_path: &Path,
+    from: &Path,
+    to: &Path,
+    judge_model_override: Option<String>,
+    output: Option<&Path>,
+    format: Format,
+) -> Result<()> {
+    let config = load_config(toml_path)?;
+    let judge_model = judge_model_override.unwrap_or_else(|| config.judge.model.clone());
+
+    let prior = checkpoint::load(from)
+        .with_context(|| format!("load checkpoint {}", from.display()))?;
+    if prior.is_empty() {
+        return Err(anyhow!(
+            "checkpoint at {} is empty; nothing to rejudge",
+            from.display()
+        ));
+    }
+
+    eprintln!(
+        "[jig] rejudging {} entries from {} -> {} (judge: {})",
+        prior.len(),
+        from.display(),
+        to.display(),
+        judge_model
+    );
+
+    if to.exists() {
+        std::fs::remove_file(to).with_context(|| format!("remove existing {}", to.display()))?;
+    }
+
+    let mut scored_owned: Vec<(Section, TrialResult, JudgeResult)> = Vec::new();
+
+    for (i, entry) in prior.iter().enumerate() {
+        let task = config
+            .tasks
+            .tuning
+            .iter()
+            .chain(config.tasks.holdout.iter())
+            .find(|t| t.id == entry.task_id)
+            .ok_or_else(|| {
+                anyhow!(
+                    "checkpoint references task '{}' not present in current TOML",
+                    entry.task_id
+                )
+            })?;
+
+        eprintln!(
+            "[jig] rejudge {}/{} {}/{}/{} i={} ...",
+            i + 1,
+            prior.len(),
+            section_label(entry.section),
+            entry.task_id,
+            entry.model,
+            entry.trial_index
+        );
+
+        let verdict = score_trial(&config, task, &entry.trial, &judge_model)
+            .with_context(|| format!("rejudge {}/{}", entry.task_id, entry.model))?;
+
+        eprintln!(
+            "[jig] rejudge done: was={:.2} now={:.2}",
+            entry.verdict.first.score, verdict.first.score
+        );
+
+        let new_entry = CheckpointEntry {
+            section: entry.section,
+            task_id: entry.task_id.clone(),
+            model: entry.model.clone(),
+            trial_index: entry.trial_index,
+            trial: entry.trial.clone(),
+            verdict: verdict.clone(),
+        };
+        checkpoint::append(to, &new_entry)
+            .with_context(|| format!("append rejudged checkpoint {}", to.display()))?;
+        scored_owned.push((entry.section, entry.trial.clone(), verdict));
+    }
+
+    let scored_view: Vec<ScoredTrial> = scored_owned
+        .iter()
+        .map(|(section, trial, verdict)| ScoredTrial {
+            section: *section,
+            trial,
+            verdict,
+        })
+        .collect();
+
+    let ts = current_iso_timestamp();
+    let report = build_report(&config, &scored_view, ts, judge_model);
+    emit(&report, format, output)
 }
 
 fn cmd_render(json_path: &Path, output: Option<&Path>) -> Result<()> {
