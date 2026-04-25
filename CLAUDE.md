@@ -2,12 +2,18 @@
 
 ## What this is
 
-`jig` measures whether a CLI tool is shaped so that LLM agents
-(Claude Opus, Sonnet) reach for the correct commands by default.
+`jig` measures whether a CLI tool is shaped so that LLM agents reach
+for the correct commands by default. The pattern is *runtime in the
+loop*: a real agent runtime is spawned against a fixture and we
+measure what it actually does.
 
-It runs `claude -p` subprocesses against a fixture, feeding each a task
-from the subject tool's `agent-shape.toml` battery. It captures the
-transcript, scores it with an LLM-as-judge, and reports first-try
+The runtime today is `claude -p`; the framework is runtime-agnostic in
+language and ready for other agents (GPT, Gemini, local models) once
+the runner accepts a configurable spawn command.
+
+It runs the agent subprocess against a fixture, feeding each one a
+task from the subject tool's `agent-shape.toml` battery. It captures
+the transcript, scores it with an LLM-as-judge, and reports first-try
 command success, tokens per task, turns to completion, and
 invented-command count.
 

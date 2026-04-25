@@ -2,7 +2,7 @@
 name = "nomograph-jig"
 version = "0.1.0"
 edition = "2024"
-description = "Agent-shape testing harness. Runs claude-in-the-loop task batteries against a tool's CLI to measure first-try command success, tokens, turns, and invented-command count. TOML-driven, LLM-as-judge scored."
+description = "Agent-shape testing harness. Runs runtime-in-the-loop task batteries against a tool's CLI to measure first-try command success, tokens, turns, and invented-command count. TOML-driven, LLM-as-judge scored."
 authors = ["Andrew Dunn <andunn@gitlab.com>"]
 repository = "https://gitlab.com/nomograph/jig"
 homepage = "https://gitlab.com/nomograph/jig"
