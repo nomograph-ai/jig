@@ -13,6 +13,26 @@ pub struct AgentShape {
     pub run: RunConfig,
     pub judge: JudgeConfig,
     pub tasks: Tasks,
+    /// Optional: commands the rubric claims exist. `jig check --binary`
+    /// runs the binary's `--help` and warns about drift in either
+    /// direction (binary advertising commands the rubric omits, or
+    /// rubric listing commands the binary doesn't expose).
+    ///
+    /// Twice in the synthesist study the rubric was missing real
+    /// commands and the judge counted them as inventions, producing
+    /// phantom regressions. This list closes that loop.
+    #[serde(default)]
+    pub commands: Option<ExpectedCommands>,
+}
+
+/// Subcommands the rubric claims exist. `jig check --binary` cross-
+/// references this with the binary's `--help` output.
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct ExpectedCommands {
+    /// Top-level subcommands (e.g. `init`, `tree`, `spec`).
+    /// Compared with the first column of `<binary> --help`.
+    #[serde(default)]
+    pub top_level: Vec<String>,
 }
 
 /// Identity of the tool under test.
@@ -177,6 +197,7 @@ mod tests {
                     sealed_against_tag: "v0.1.0".into(),
                 }],
             },
+            commands: None,
         };
         let ser = toml::to_string(&cfg).expect("serialize");
         let back: AgentShape = toml::from_str(&ser).expect("round-trip");

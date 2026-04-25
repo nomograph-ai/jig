@@ -23,9 +23,16 @@ enum Command {
     /// Run the battery described in an agent-shape.toml and emit a report.
     Run(RunArgs),
     /// Validate an agent-shape.toml without running the battery.
+    /// Pass `--binary <path>` to also cross-reference the rubric's
+    /// expected commands with the binary's `--help` output.
     Check {
         #[arg(default_value = "agent-shape.toml")]
         path: PathBuf,
+        /// Path to the subject binary. When set, runs `<binary> --help`
+        /// and reports drift between the binary's advertised
+        /// subcommands and the rubric's `commands.top_level` list.
+        #[arg(long)]
+        binary: Option<PathBuf>,
     },
     /// Render a previously-emitted JSON report as markdown.
     Render {
@@ -120,7 +127,7 @@ enum Format {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.cmd {
-        Command::Check { path } => cmd_check(&path),
+        Command::Check { path, binary } => cmd_check(&path, binary.as_deref()),
         Command::Run(args) => cmd_run(args),
         Command::Render { path, output } => cmd_render(&path, output.as_deref()),
         Command::Compare {
@@ -375,7 +382,7 @@ fn cmd_render(json_path: &Path, output: Option<&Path>) -> Result<()> {
     Ok(())
 }
 
-fn cmd_check(path: &Path) -> Result<()> {
+fn cmd_check(path: &Path, binary: Option<&Path>) -> Result<()> {
     let config = load_config(path)?;
     println!(
         "OK: {} ({} tuning, {} holdout)",
@@ -383,7 +390,114 @@ fn cmd_check(path: &Path) -> Result<()> {
         config.tasks.tuning.len(),
         config.tasks.holdout.len()
     );
+    if let Some(bin) = binary {
+        let drift = check_command_drift(&config, bin)?;
+        if drift.missing_in_rubric.is_empty() && drift.extra_in_rubric.is_empty() {
+            println!(
+                "rubric ↔ binary OK: {} top-level subcommands match",
+                drift.advertised.len()
+            );
+        } else {
+            if !drift.missing_in_rubric.is_empty() {
+                eprintln!(
+                    "warning: binary advertises {} subcommand(s) the rubric omits:",
+                    drift.missing_in_rubric.len()
+                );
+                for c in &drift.missing_in_rubric {
+                    eprintln!("  + {c}");
+                }
+                eprintln!("  -> add to [commands].top_level so the judge knows they're real");
+            }
+            if !drift.extra_in_rubric.is_empty() {
+                eprintln!(
+                    "warning: rubric lists {} subcommand(s) the binary doesn't expose:",
+                    drift.extra_in_rubric.len()
+                );
+                for c in &drift.extra_in_rubric {
+                    eprintln!("  - {c}");
+                }
+                eprintln!("  -> remove from [commands].top_level so the judge doesn't expect them");
+            }
+        }
+    }
     Ok(())
+}
+
+#[derive(Debug)]
+struct CommandDrift {
+    advertised: Vec<String>,
+    missing_in_rubric: Vec<String>,
+    extra_in_rubric: Vec<String>,
+}
+
+fn check_command_drift(config: &AgentShape, binary: &Path) -> Result<CommandDrift> {
+    let output = std::process::Command::new(binary)
+        .arg("--help")
+        .output()
+        .with_context(|| format!("run {} --help", binary.display()))?;
+    let help_text = String::from_utf8_lossy(&output.stdout);
+    let advertised = parse_clap_subcommands(&help_text);
+    let listed: std::collections::HashSet<String> = config
+        .commands
+        .as_ref()
+        .map(|c| c.top_level.iter().cloned().collect())
+        .unwrap_or_default();
+    let advertised_set: std::collections::HashSet<String> = advertised.iter().cloned().collect();
+
+    let missing_in_rubric: Vec<String> = advertised
+        .iter()
+        .filter(|c| !listed.contains(*c))
+        .cloned()
+        .collect();
+    let extra_in_rubric: Vec<String> = listed
+        .iter()
+        .filter(|c| !advertised_set.contains(*c))
+        .cloned()
+        .collect();
+    Ok(CommandDrift {
+        advertised,
+        missing_in_rubric,
+        extra_in_rubric,
+    })
+}
+
+/// Parse top-level subcommand names out of a clap-style `--help`
+/// output. Looks for the `Commands:` (or `Subcommands:`) block and
+/// extracts the first identifier from each subsequent indented line
+/// until a blank line or another section header.
+fn parse_clap_subcommands(help: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut in_block = false;
+    for line in help.lines() {
+        let trimmed = line.trim_end();
+        if !in_block {
+            let lower = trimmed.trim().to_ascii_lowercase();
+            if lower == "commands:" || lower == "subcommands:" {
+                in_block = true;
+            }
+            continue;
+        }
+        if trimmed.is_empty() {
+            in_block = false;
+            continue;
+        }
+        // Indented lines start the subcommand. Format: "  name   description"
+        if !trimmed.starts_with(' ') && !trimmed.starts_with('\t') {
+            in_block = false;
+            continue;
+        }
+        let stripped = trimmed.trim_start();
+        let first = stripped
+            .split_whitespace()
+            .next()
+            .unwrap_or("")
+            .to_string();
+        if first.is_empty() || first == "help" || !first.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
+            continue;
+        }
+        out.push(first);
+    }
+    out
 }
 
 fn cmd_run(args: RunArgs) -> Result<()> {
@@ -564,5 +678,42 @@ mod tests {
     #[test]
     fn select_sections_honors_holdout_only() {
         assert_eq!(select_sections(false, true), vec![Section::Holdout]);
+    }
+
+    #[test]
+    fn parse_clap_subcommands_extracts_first_token() {
+        let help = "
+Usage: tool [OPTIONS] <COMMAND>
+
+Commands:
+  init     Initialize the thing
+  status   Show status
+  tree     Manage trees
+  task     Manage tasks
+  help     Print this help
+
+Options:
+  -h, --help     Print help
+";
+        let cmds = parse_clap_subcommands(help);
+        assert_eq!(cmds, vec!["init", "status", "tree", "task"]);
+    }
+
+    #[test]
+    fn parse_clap_subcommands_skips_help() {
+        let help = "Commands:\n  foo  do foo\n  help  print help\n  bar  do bar\n";
+        assert_eq!(parse_clap_subcommands(help), vec!["foo", "bar"]);
+    }
+
+    #[test]
+    fn parse_clap_subcommands_handles_no_block() {
+        let help = "Usage: tool [OPTIONS]\n\nOptions:\n  --help\n";
+        assert!(parse_clap_subcommands(help).is_empty());
+    }
+
+    #[test]
+    fn parse_clap_subcommands_stops_at_section_break() {
+        let help = "Commands:\n  one  ok\n  two  ok\n\nOptions:\n  --foo  not a subcommand\n";
+        assert_eq!(parse_clap_subcommands(help), vec!["one", "two"]);
     }
 }
