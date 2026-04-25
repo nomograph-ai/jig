@@ -1,0 +1,136 @@
+# agent-shape.toml — starter template for adopting jig in a new tool.
+#
+# Drop this file at the root of any CLI repo, fill in the markers
+# below, then:
+#
+#   jig check agent-shape.toml --binary $(which <your-tool>)
+#
+# That validates the rubric against the binary's --help. Run
+# `jig run agent-shape.toml --tuning-only` to fire the first
+# baseline.
+#
+# See `keaton/research/synthesist-read-surface-audit.md` for what a
+# real adoption + treatment cycle looks like end-to-end.
+
+[subject]
+# Tool name. Same as the binary, generally.
+name = "REPLACE-ME"
+binary = "REPLACE-ME"
+description = "One-line tool description."
+# Optional: pin a specific version for retrospective runs.
+# version_pin = "1.0.0"
+
+[fixture]
+# Idempotent setup script. Wipes and rebuilds the workdir from scratch
+# so every trial starts identical. Path is resolved relative to this
+# TOML's directory.
+setup = "scripts/agent-shape-fixture.sh"
+# Optional teardown.
+# cleanup = "scripts/agent-shape-cleanup.sh"
+# Where the agent operates. Same relative-resolution rule.
+workdir = "fixtures/agent-shape-realistic"
+
+[run]
+# Trials per (task, model) cell. n=10 for iteration; n=20+ for
+# publication-grade with Cliff's delta. n=5 is too noisy to detect
+# small effect sizes given typical judge IRR variance (0.05-0.30).
+n = 10
+# Agent runtimes under test. The runner spawns claude -p today;
+# future versions will accept a configurable spawn command.
+models = ["claude-opus-4-7", "claude-sonnet-4-6"]
+# Cap at 3 turns per the lever canary-bench finding that correction
+# loops decay exponentially after 2-3 attempts. Advisory in v1.
+turn_cap = 3
+# Per-trial wall-clock timeout.
+timeout_seconds = 180
+
+[judge]
+# Default judge model. Cheap is fine; structure is what matters.
+model = "claude-haiku-4-5"
+# Run the judge twice per transcript and report IRR delta. Costs
+# ~2x judge tokens but reveals when the judge itself is unstable.
+double_score = true
+required_fields = [
+  "score",
+  "first_command",
+  "first_command_existed",
+  "completed",
+  "invented_commands",
+  "fallback_to_sql",
+  "reasoning",
+]
+# The rubric is what the judge sees. KEEP THE COMMAND LIST CURRENT.
+# When you ship a new subcommand, update both the rubric prose AND
+# `[commands].top_level` below in the same commit. Rubric staleness
+# was the dominant source of measurement error in the synthesist
+# study; `jig check --binary` now mechanically catches the binary
+# side, but the prose still has to be hand-maintained.
+rubric = """
+You are judging whether an agent completed a CLI task against the
+`REPLACE-ME` tool.
+
+Score on a 4-point rubric:
+  1.00  completed correctly, first command attempt was real and worked
+  0.50  completed correctly, but reached for non-existent commands first
+  0.25  completed via raw shell/grep/sql fallback instead of the tool
+  0.00  did not complete
+
+Commands that exist in REPLACE-ME include (non-exhaustive):
+  REPLACE-ME init | status | ...
+  (mirror the [commands].top_level list below; describe sub-shapes
+   that take positional or flag forms here too)
+
+Anything NOT on that list or similar-shaped counts as invented.
+
+For each transcript identify:
+  - first_command:         exact shell command the agent first tried
+  - first_command_existed: whether that command actually exists
+  - completed:             did the agent finish what the user asked
+  - invented_commands:     non-existent invocations the agent tried
+  - fallback_to_sql:       did the agent invoke sqlite/grep/awk on
+                           internal files instead of the tool
+  - reasoning:             one short paragraph
+
+Respond in strict JSON with exactly the fields listed above. No
+markdown fences. No prose outside the JSON object.
+"""
+
+# Validated by `jig check --binary <path>`. Drift in either direction
+# (binary advertising commands the rubric omits, or rubric listing
+# commands the binary doesn't expose) is the methodology's biggest
+# failure mode. Land changes here in the same commit as clap changes.
+[commands]
+top_level = [
+  # "init",
+  # "status",
+  # ...
+]
+
+# Tuning tasks: the designer iterates against these. They WILL overfit;
+# disclose it in the study write-up. Add 3-7 tasks covering the
+# realistic exploration paths agents take. Each task needs:
+# - id (stable identifier)
+# - summary (one-line human summary)
+# - prompt (verbatim to the agent)
+# - success_criteria (appended to the judge's rubric)
+# - author, created_at, sealed_against_tag (provenance)
+
+[[tasks.tuning]]
+id = "exploration-01"
+summary = "What's going on here?"
+prompt = "Open-ended exploration prompt. Replace with a realistic question a user would ask the agent about REPLACE-ME state."
+success_criteria = [
+  "Agent uses REPLACE-ME read commands rather than raw filesystem access",
+]
+author = "your-email@domain"
+created_at = "YYYY-MM-DD"
+sealed_against_tag = "REPLACE-ME-vX.Y.Z"
+
+# [[tasks.tuning]]
+# ... 2-6 more tasks covering the read paths, write paths, drill-downs
+# you care about
+
+# Hold-out tasks: keep empty in v1. Populate later by independent
+# authors who haven't seen tuning-set results. Same shape; provenance
+# proves temporal separation from the treatment.
+# [[tasks.holdout]]
