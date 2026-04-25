@@ -143,6 +143,17 @@ fn cmd_rejudge(
         ));
     }
 
+    // Resume: load any entries already in the output checkpoint.
+    let already = checkpoint::load(to)
+        .with_context(|| format!("load resume-checkpoint {}", to.display()))?;
+    if !already.is_empty() {
+        eprintln!(
+            "[jig] rejudge resuming: {} entries already in {}",
+            already.len(),
+            to.display()
+        );
+    }
+
     eprintln!(
         "[jig] rejudging {} entries from {} -> {} (judge: {})",
         prior.len(),
@@ -151,13 +162,25 @@ fn cmd_rejudge(
         judge_model
     );
 
-    if to.exists() {
-        std::fs::remove_file(to).with_context(|| format!("remove existing {}", to.display()))?;
-    }
-
     let mut scored_owned: Vec<(Section, TrialResult, JudgeResult)> = Vec::new();
+    let mut skipped: Vec<(String, String, u32, String)> = Vec::new();
 
     for (i, entry) in prior.iter().enumerate() {
+        if let Some(existing) = checkpoint::has_entry(
+            &already,
+            entry.section,
+            &entry.task_id,
+            &entry.model,
+            entry.trial_index,
+        ) {
+            scored_owned.push((
+                entry.section,
+                existing.trial.clone(),
+                existing.verdict.clone(),
+            ));
+            continue;
+        }
+
         let task = config
             .tasks
             .tuning
@@ -181,8 +204,22 @@ fn cmd_rejudge(
             entry.trial_index
         );
 
-        let verdict = score_trial(&config, task, &entry.trial, &judge_model)
-            .with_context(|| format!("rejudge {}/{}", entry.task_id, entry.model))?;
+        let verdict = match score_trial(&config, task, &entry.trial, &judge_model) {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!(
+                    "[jig] rejudge FAILED (skipping): {}/{} i={}: {e}",
+                    entry.task_id, entry.model, entry.trial_index
+                );
+                skipped.push((
+                    entry.task_id.clone(),
+                    entry.model.clone(),
+                    entry.trial_index,
+                    format!("{e}"),
+                ));
+                continue;
+            }
+        };
 
         eprintln!(
             "[jig] rejudge done: was={:.2} now={:.2}",
@@ -200,6 +237,17 @@ fn cmd_rejudge(
         checkpoint::append(to, &new_entry)
             .with_context(|| format!("append rejudged checkpoint {}", to.display()))?;
         scored_owned.push((entry.section, entry.trial.clone(), verdict));
+    }
+
+    if !skipped.is_empty() {
+        eprintln!(
+            "[jig] rejudge summary: {} rejudged, {} skipped (judge errors)",
+            scored_owned.len(),
+            skipped.len()
+        );
+        for (t, m, i, err) in &skipped {
+            eprintln!("  skipped {}/{} i={}: {err}", t, m, i);
+        }
     }
 
     let scored_view: Vec<ScoredTrial> = scored_owned
