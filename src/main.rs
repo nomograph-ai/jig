@@ -4,7 +4,7 @@ use anyhow::{Context, Result, anyhow};
 use clap::{Parser, Subcommand, ValueEnum};
 use jig::checkpoint::{self, CheckpointEntry};
 use jig::judge::{JudgeResult, score_trial};
-use jig::report::{Report, ScoredTrial, Section, build_report, emit_json, emit_markdown};
+use jig::report::{CellReport, Report, ScoredTrial, Section, build_report, emit_json, emit_markdown};
 use jig::runner::{TrialResult, run_trial};
 use jig::schema::AgentShape;
 use std::fs;
@@ -32,6 +32,17 @@ enum Command {
         /// Path to the JSON report.
         path: PathBuf,
         /// Write markdown here instead of stdout.
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
+    /// Compare two reports (e.g. baseline vs treated) and emit a
+    /// per-cell delta table. No API calls; pure JSON-in, markdown-out.
+    Compare {
+        /// Path to the baseline JSON report.
+        before: PathBuf,
+        /// Path to the treated JSON report.
+        after: PathBuf,
+        /// Where to write the comparison report. Prints to stdout if omitted.
         #[arg(long)]
         output: Option<PathBuf>,
     },
@@ -112,6 +123,11 @@ fn main() -> Result<()> {
         Command::Check { path } => cmd_check(&path),
         Command::Run(args) => cmd_run(args),
         Command::Render { path, output } => cmd_render(&path, output.as_deref()),
+        Command::Compare {
+            before,
+            after,
+            output,
+        } => cmd_compare(&before, &after, output.as_deref()),
         Command::Rejudge {
             toml,
             from,
@@ -262,6 +278,88 @@ fn cmd_rejudge(
     let ts = current_iso_timestamp();
     let report = build_report(&config, &scored_view, ts, judge_model);
     emit(&report, format, output)
+}
+
+fn cmd_compare(before_path: &Path, after_path: &Path, output: Option<&Path>) -> Result<()> {
+    let before: Report = serde_json::from_str(&std::fs::read_to_string(before_path)?)
+        .with_context(|| format!("parse {}", before_path.display()))?;
+    let after: Report = serde_json::from_str(&std::fs::read_to_string(after_path)?)
+        .with_context(|| format!("parse {}", after_path.display()))?;
+    let md = render_comparison(&before, &after, before_path, after_path);
+    match output {
+        Some(p) => std::fs::write(p, md).with_context(|| format!("write {}", p.display()))?,
+        None => println!("{md}"),
+    }
+    Ok(())
+}
+
+fn render_comparison(before: &Report, after: &Report, before_path: &Path, after_path: &Path) -> String {
+    use std::fmt::Write as _;
+    let mut s = String::new();
+    let _ = writeln!(s, "# agent-shape comparison: {} vs {}", before.subject, after.subject);
+    let _ = writeln!(s, "\nbefore: `{}`", before_path.display());
+    let _ = writeln!(s, "after:  `{}`", after_path.display());
+
+    let _ = writeln!(s, "\n## Aggregate (tuning battery)\n");
+    let _ = writeln!(
+        s,
+        "| metric | before | after | delta |"
+    );
+    let _ = writeln!(s, "|---|---:|---:|---:|");
+    let bm = before.tuning.mean_score.unwrap_or(0.0);
+    let am = after.tuning.mean_score.unwrap_or(0.0);
+    let _ = writeln!(s, "| mean_score | {bm:.3} | {am:.3} | {:+.3} |", am - bm);
+    let bc = before.tuning.completion_rate.unwrap_or(0.0);
+    let ac = after.tuning.completion_rate.unwrap_or(0.0);
+    let _ = writeln!(s, "| completion_rate | {:.1}% | {:.1}% | {:+.1}pp |", bc * 100.0, ac * 100.0, (ac - bc) * 100.0);
+    let bt = before.tuning.mean_tokens.unwrap_or(0.0);
+    let at = after.tuning.mean_tokens.unwrap_or(0.0);
+    let _ = writeln!(s, "| mean_tokens | {bt:.0} | {at:.0} | {:+.0} |", at - bt);
+    let btr = before.tuning.mean_turns.unwrap_or(0.0);
+    let atr = after.tuning.mean_turns.unwrap_or(0.0);
+    let _ = writeln!(s, "| mean_turns | {btr:.2} | {atr:.2} | {:+.2} |", atr - btr);
+    let _ = writeln!(
+        s,
+        "| total_invented | {} | {} | {:+} |",
+        before.tuning.total_invented_commands,
+        after.tuning.total_invented_commands,
+        after.tuning.total_invented_commands as i64 - before.tuning.total_invented_commands as i64
+    );
+    let _ = writeln!(
+        s,
+        "| total_fallback_to_sql | {} | {} | {:+} |",
+        before.tuning.total_fallback_to_sql,
+        after.tuning.total_fallback_to_sql,
+        after.tuning.total_fallback_to_sql as i64 - before.tuning.total_fallback_to_sql as i64
+    );
+
+    let _ = writeln!(s, "\n## Per-cell deltas\n");
+    let _ = writeln!(s, "| section | task | model | before | after | delta | invented Δ |");
+    let _ = writeln!(s, "|---|---|---|---:|---:|---:|---:|");
+    use std::collections::BTreeMap;
+    let key = |c: &CellReport| -> (Section, String, String) {
+        (c.section, c.task_id.clone(), c.model.clone())
+    };
+    let before_by: BTreeMap<_, _> = before.cells.iter().map(|c| (key(c), c)).collect();
+    let after_by: BTreeMap<_, _> = after.cells.iter().map(|c| (key(c), c)).collect();
+    let mut all_keys: Vec<_> = before_by.keys().chain(after_by.keys()).cloned().collect();
+    all_keys.sort();
+    all_keys.dedup();
+    for k in all_keys {
+        let b = before_by.get(&k);
+        let a = after_by.get(&k);
+        let bs = b.map(|c| c.mean_score).unwrap_or(0.0);
+        let as_ = a.map(|c| c.mean_score).unwrap_or(0.0);
+        let bi = b.map(|c| c.invented_commands.len()).unwrap_or(0);
+        let ai = a.map(|c| c.invented_commands.len()).unwrap_or(0);
+        let sec = match k.0 { Section::Tuning => "tuning", Section::Holdout => "holdout" };
+        let _ = writeln!(
+            s,
+            "| {sec} | {} | {} | {bs:.2} | {as_:.2} | {:+.2} | {:+} |",
+            k.1, k.2, as_ - bs, ai as i64 - bi as i64
+        );
+    }
+    s
 }
 
 fn cmd_render(json_path: &Path, output: Option<&Path>) -> Result<()> {
