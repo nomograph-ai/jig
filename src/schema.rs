@@ -59,6 +59,13 @@ pub struct Fixture {
     pub cleanup: Option<String>,
     /// Working directory the agent operates in.
     pub workdir: String,
+    /// Environment variables to strip from the agent and fixture
+    /// processes before they spawn. Use this for any subject-tool
+    /// variable whose value in the caller's shell would contaminate
+    /// trials (session ids, data-dir overrides, auth tokens, etc.).
+    /// Exact names only; no globbing.
+    #[serde(default)]
+    pub strip_env: Vec<String>,
 }
 
 /// Default run parameters. CLI flags override these.
@@ -134,12 +141,12 @@ mod tests {
     #[test]
     fn deserializes_example() {
         let parsed: AgentShape = toml::from_str(EXAMPLE).expect("parse example");
-        assert_eq!(parsed.subject.name, "synthesist");
-        assert_eq!(parsed.subject.binary, "synthesist");
+        assert!(!parsed.subject.name.is_empty());
+        assert!(!parsed.subject.binary.is_empty());
         assert!(parsed.run.n >= 1);
         assert!(parsed.run.turn_cap >= 1 && parsed.run.turn_cap <= 5);
         assert!(!parsed.tasks.tuning.is_empty());
-        assert!(parsed.tasks.holdout.is_empty(), "holdout empty in v1");
+        assert!(parsed.tasks.holdout.is_empty());
         assert!(!parsed.judge.rubric.is_empty());
         assert!(parsed.judge.required_fields.contains(&"score".to_string()));
     }
@@ -176,6 +183,7 @@ mod tests {
                 setup: "true".into(),
                 cleanup: None,
                 workdir: "/tmp".into(),
+                strip_env: vec![],
             },
             run: RunConfig {
                 n: 1,

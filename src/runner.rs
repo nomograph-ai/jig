@@ -171,39 +171,44 @@ pub fn run_trial(
     let workdir = resolve_path(&config.fixture.workdir, base_dir);
     let setup = resolve_path(&config.fixture.setup, base_dir);
 
-    if !run_fixture_cmd(setup.to_string_lossy().as_ref(), base_dir) {
+    if !run_fixture_cmd(
+        setup.to_string_lossy().as_ref(),
+        base_dir,
+        &config.fixture.strip_env,
+    ) {
         return Ok(TrialResult::failed_setup(&task.id, model));
     }
 
     let start = Instant::now();
 
-    let mut child = Command::new("claude")
-        .args([
-            "-p",
-            "--print",
-            "--output-format",
-            "stream-json",
-            "--verbose",
-            "--bare",
-            "--dangerously-skip-permissions",
-            "--model",
-            model,
-            "--add-dir",
-            workdir.to_string_lossy().as_ref(),
-        ])
-        // `--add-dir` is variadic; the separator stops clap from
-        // consuming the prompt as another dir.
-        .arg("--")
-        .arg(&task.prompt)
-        .current_dir(&workdir)
-        // Prevent session/instance leakage: any SYNTHESIST_* var from
-        // the parent shell would make the agent see the wrong DB.
-        .env_remove("SYNTHESIST_SESSION")
-        .env_remove("SYNTHESIST_DIR")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .context("spawn claude subprocess")?;
+    let mut cmd = Command::new("claude");
+    cmd.args([
+        "-p",
+        "--print",
+        "--output-format",
+        "stream-json",
+        "--verbose",
+        "--bare",
+        "--dangerously-skip-permissions",
+        "--model",
+        model,
+        "--add-dir",
+        workdir.to_string_lossy().as_ref(),
+    ])
+    // `--add-dir` is variadic; the separator stops clap from
+    // consuming the prompt as another dir.
+    .arg("--")
+    .arg(&task.prompt)
+    .current_dir(&workdir)
+    .stdout(Stdio::piped())
+    .stderr(Stdio::null());
+    // Strip any caller-side env vars that would leak the developer's
+    // session into the trial. Configured per fixture so jig stays
+    // subject-agnostic.
+    for var in &config.fixture.strip_env {
+        cmd.env_remove(var);
+    }
+    let mut child = cmd.spawn().context("spawn claude subprocess")?;
 
     let stdout = child.stdout.take().context("take stdout")?;
     let reader = BufReader::new(stdout);
@@ -230,7 +235,11 @@ pub fn run_trial(
 
     if let Some(cleanup) = &config.fixture.cleanup {
         let resolved = resolve_path(cleanup, base_dir);
-        let _ = run_fixture_cmd(resolved.to_string_lossy().as_ref(), base_dir);
+        let _ = run_fixture_cmd(
+            resolved.to_string_lossy().as_ref(),
+            base_dir,
+            &config.fixture.strip_env,
+        );
     }
 
     let mut result =
@@ -244,16 +253,13 @@ pub fn run_trial(
     Ok(result)
 }
 
-fn run_fixture_cmd(cmd: &str, cwd: &Path) -> bool {
-    Command::new("sh")
-        .arg("-c")
-        .arg(cmd)
-        .current_dir(cwd)
-        .env_remove("SYNTHESIST_SESSION")
-        .env_remove("SYNTHESIST_DIR")
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+fn run_fixture_cmd(cmd: &str, cwd: &Path, strip_env: &[String]) -> bool {
+    let mut c = Command::new("sh");
+    c.arg("-c").arg(cmd).current_dir(cwd);
+    for var in strip_env {
+        c.env_remove(var);
+    }
+    c.status().map(|s| s.success()).unwrap_or(false)
 }
 
 /// Resolve a possibly-relative path against a base directory.

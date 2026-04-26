@@ -208,10 +208,10 @@ mod tests {
     fn sample_score() -> JudgeScore {
         JudgeScore {
             score: 0.5,
-            first_command: Some("synthesist tree show".into()),
+            first_command: Some("demo tree show".into()),
             first_command_existed: false,
             completed: true,
-            invented_commands: vec!["synthesist tree show".into()],
+            invented_commands: vec!["demo tree show".into()],
             fallback_to_sql: false,
             reasoning: "reached for non-existent command first".into(),
         }
@@ -274,13 +274,53 @@ mod tests {
 
     #[test]
     fn prompt_includes_all_required_sections() {
-        let config: AgentShape =
-            toml::from_str(include_str!("../examples/agent-shape.example.toml")).unwrap();
+        use crate::schema::{
+            ExpectedCommands, Fixture, JudgeConfig, RunConfig, Subject, Task, Tasks,
+        };
+        let config = AgentShape {
+            subject: Subject {
+                name: "demo".into(),
+                binary: "demo".into(),
+                description: "demo".into(),
+                version_pin: None,
+            },
+            fixture: Fixture {
+                setup: "true".into(),
+                cleanup: None,
+                workdir: "/tmp".into(),
+                strip_env: vec![],
+            },
+            run: RunConfig {
+                n: 1,
+                models: vec!["claude-sonnet-4-6".into()],
+                turn_cap: 3,
+                timeout_seconds: 60,
+            },
+            judge: JudgeConfig {
+                model: "claude-haiku-4-5".into(),
+                double_score: false,
+                required_fields: vec!["score".into()],
+                rubric: "Score the trial.".into(),
+            },
+            tasks: Tasks {
+                tuning: vec![Task {
+                    id: "demo-task-01".into(),
+                    summary: "demo".into(),
+                    prompt: "do the thing".into(),
+                    success_criteria: vec!["agent ran the right command".into()],
+                    author: "test".into(),
+                    created_at: "2026-01-01".into(),
+                    sealed_against_tag: "demo-v0".into(),
+                }],
+                holdout: vec![],
+            },
+            commands: Some(ExpectedCommands { top_level: vec![] }),
+        };
         let task = &config.tasks.tuning[0];
         let trial = TrialResult {
             task_id: task.id.clone(),
             model: "claude-sonnet-4-6".into(),
-            bash_commands: vec!["synthesist status".into()],
+            bash_commands: vec!["demo status".into()],
             assistant_texts: vec!["Let me check.".into()],
             num_turns: 2,
             input_tokens: 100,
@@ -298,7 +338,7 @@ mod tests {
         assert!(prompt.contains("## Task"));
         assert!(prompt.contains("## Success criteria"));
         assert!(prompt.contains("## Agent transcript"));
-        assert!(prompt.contains("synthesist status"));
+        assert!(prompt.contains("demo status"));
         assert!(prompt.contains("Let me check."));
         assert!(prompt.contains("num_turns: 2"));
         assert!(prompt.contains("strict JSON"));

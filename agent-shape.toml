@@ -25,6 +25,10 @@ version_pin = "0.1.0"
 [fixture]
 setup = "scripts/agent-shape-fixture.sh"
 workdir = "fixtures/jig-self-test"
+# jig itself does not read any well-known env vars, so nothing to
+# strip; the field is kept here so the self-test exercises the
+# strip_env wiring path even when empty.
+strip_env = []
 
 [run]
 n = 5

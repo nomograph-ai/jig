@@ -336,7 +336,48 @@ mod tests {
     }
 
     fn sample_config() -> AgentShape {
-        toml::from_str(include_str!("../examples/agent-shape.example.toml")).expect("parse example")
+        use crate::schema::{
+            ExpectedCommands, Fixture, JudgeConfig, RunConfig, Subject, Task, Tasks,
+        };
+        AgentShape {
+            subject: Subject {
+                name: "demo".into(),
+                binary: "demo".into(),
+                description: "demo".into(),
+                version_pin: None,
+            },
+            fixture: Fixture {
+                setup: "true".into(),
+                cleanup: None,
+                workdir: "/tmp".into(),
+                strip_env: vec![],
+            },
+            run: RunConfig {
+                n: 1,
+                models: vec!["m".into()],
+                turn_cap: 3,
+                timeout_seconds: 60,
+            },
+            judge: JudgeConfig {
+                model: "claude-haiku-4-5".into(),
+                double_score: false,
+                required_fields: vec!["score".into()],
+                rubric: "rubric".into(),
+            },
+            tasks: Tasks {
+                tuning: vec![Task {
+                    id: "t1".into(),
+                    summary: "demo task".into(),
+                    prompt: "do the thing".into(),
+                    success_criteria: vec![],
+                    author: "test".into(),
+                    created_at: "2026-01-01".into(),
+                    sealed_against_tag: "demo-v0".into(),
+                }],
+                holdout: vec![],
+            },
+            commands: Some(ExpectedCommands { top_level: vec![] }),
+        }
     }
 
     #[test]
@@ -362,7 +403,7 @@ mod tests {
             "m1",
             0.5,
             true,
-            vec!["synthesist tree show"],
+            vec!["demo tree show"],
             false,
             Some(0.1),
         );
@@ -402,10 +443,7 @@ mod tests {
         assert_eq!(t1m1.n, 2);
         assert!((t1m1.mean_score - 0.75).abs() < 1e-9);
         assert!(t1m1.score_stddev > 0.0);
-        assert_eq!(
-            t1m1.invented_commands,
-            vec!["synthesist tree show".to_string()]
-        );
+        assert_eq!(t1m1.invented_commands, vec!["demo tree show".to_string()]);
         assert!((t1m1.mean_irr_delta.unwrap() - 0.05).abs() < 1e-9);
     }
 
@@ -439,7 +477,7 @@ mod tests {
         let md = emit_markdown(&r);
         assert!(md.contains("## Holdout battery"));
         assert!(md.contains("empty in v1"));
-        assert!(md.contains("# agent-shape report: synthesist"));
+        assert!(md.contains("# agent-shape report: demo"));
     }
 
     #[test]
@@ -455,7 +493,7 @@ mod tests {
         let r = build_report(&cfg, &scored, "t".into(), "j".into());
         let j = emit_json(&r);
         let back: Report = serde_json::from_str(&j).expect("roundtrip");
-        assert_eq!(back.subject, "synthesist");
+        assert_eq!(back.subject, "demo");
         assert_eq!(back.cells.len(), 1);
     }
 }

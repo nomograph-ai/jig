@@ -6,13 +6,11 @@
 # report. The fixture wipes and rebuilds on every trial so state is
 # isolated across runs.
 #
-# Strips inherited env vars that could leak the developer's session
-# context into a trial.
+# jig itself reads no caller-side env vars, so this fixture has
+# nothing to unset; agent-shape.toml's `strip_env` field is the
+# right place for subject-tool-specific variables.
 
 set -eu
-
-unset SYNTHESIST_SESSION
-unset SYNTHESIST_DIR
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 FIXTURE="$ROOT/fixtures/jig-self-test"

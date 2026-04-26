@@ -19,6 +19,10 @@ the project follows semantic versioning.
 - Cargo metadata: `rust-version = "1.88"` pin and an `exclude` list so
   the published tarball drops CI config, local audit notes, and
   generated artifacts.
+- `[fixture].strip_env` field in `agent-shape.toml`: list of caller-side
+  environment variables to remove before spawning the agent or fixture.
+  Replaces the previous hardcoded subject-specific strip list, so the
+  runner is genuinely subject-agnostic.
 
 ### Changed
 

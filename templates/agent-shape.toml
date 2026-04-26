@@ -29,6 +29,11 @@ setup = "scripts/agent-shape-fixture.sh"
 # cleanup = "scripts/agent-shape-cleanup.sh"
 # Where the agent operates. Same relative-resolution rule.
 workdir = "fixtures/agent-shape-realistic"
+# Caller-side env vars to strip before spawning the agent or fixture.
+# List exact names of any variables your tool reads (session ids,
+# data-dir overrides, auth tokens) so the developer's local context
+# does not contaminate trials.
+strip_env = ["YOURTOOL_SESSION", "YOURTOOL_DIR"]
 
 [run]
 # Trials per (task, model) cell. n=10 for iteration; n=20+ for
@@ -61,10 +66,11 @@ required_fields = [
 ]
 # The rubric is what the judge sees. KEEP THE COMMAND LIST CURRENT.
 # When you ship a new subcommand, update both the rubric prose AND
-# `[commands].top_level` below in the same commit. Rubric staleness
-# was the dominant source of measurement error in the synthesist
-# study; `jig check --binary` now mechanically catches the binary
-# side, but the prose still has to be hand-maintained.
+# `[commands].top_level` below in the same commit. Stale rubrics
+# are the most common source of measurement error: the judge will
+# count real commands as inventions and produce phantom regressions.
+# `jig check --binary` mechanically catches the binary side, but the
+# prose still has to be hand-maintained.
 rubric = """
 You are judging whether an agent completed a CLI task against the
 `REPLACE-ME` tool.
