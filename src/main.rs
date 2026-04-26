@@ -4,7 +4,9 @@ use anyhow::{Context, Result, anyhow};
 use clap::{Parser, Subcommand, ValueEnum};
 use jig::checkpoint::{self, CheckpointEntry};
 use jig::judge::{JudgeResult, score_trial};
-use jig::report::{CellReport, Report, ScoredTrial, Section, build_report, emit_json, emit_markdown};
+use jig::report::{
+    CellReport, Report, ScoredTrial, Section, build_report, emit_json, emit_markdown,
+};
 use jig::runner::{TrialResult, run_trial};
 use jig::schema::AgentShape;
 use std::fs;
@@ -157,8 +159,8 @@ fn cmd_rejudge(
     let config = load_config(toml_path)?;
     let judge_model = judge_model_override.unwrap_or_else(|| config.judge.model.clone());
 
-    let prior = checkpoint::load(from)
-        .with_context(|| format!("load checkpoint {}", from.display()))?;
+    let prior =
+        checkpoint::load(from).with_context(|| format!("load checkpoint {}", from.display()))?;
     if prior.is_empty() {
         return Err(anyhow!(
             "checkpoint at {} is empty; nothing to rejudge",
@@ -167,8 +169,8 @@ fn cmd_rejudge(
     }
 
     // Resume: load any entries already in the output checkpoint.
-    let already = checkpoint::load(to)
-        .with_context(|| format!("load resume-checkpoint {}", to.display()))?;
+    let already =
+        checkpoint::load(to).with_context(|| format!("load resume-checkpoint {}", to.display()))?;
     if !already.is_empty() {
         eprintln!(
             "[jig] rejudge resuming: {} entries already in {}",
@@ -300,31 +302,47 @@ fn cmd_compare(before_path: &Path, after_path: &Path, output: Option<&Path>) -> 
     Ok(())
 }
 
-fn render_comparison(before: &Report, after: &Report, before_path: &Path, after_path: &Path) -> String {
+fn render_comparison(
+    before: &Report,
+    after: &Report,
+    before_path: &Path,
+    after_path: &Path,
+) -> String {
     use std::fmt::Write as _;
     let mut s = String::new();
-    let _ = writeln!(s, "# agent-shape comparison: {} vs {}", before.subject, after.subject);
+    let _ = writeln!(
+        s,
+        "# agent-shape comparison: {} vs {}",
+        before.subject, after.subject
+    );
     let _ = writeln!(s, "\nbefore: `{}`", before_path.display());
     let _ = writeln!(s, "after:  `{}`", after_path.display());
 
     let _ = writeln!(s, "\n## Aggregate (tuning battery)\n");
-    let _ = writeln!(
-        s,
-        "| metric | before | after | delta |"
-    );
+    let _ = writeln!(s, "| metric | before | after | delta |");
     let _ = writeln!(s, "|---|---:|---:|---:|");
     let bm = before.tuning.mean_score.unwrap_or(0.0);
     let am = after.tuning.mean_score.unwrap_or(0.0);
     let _ = writeln!(s, "| mean_score | {bm:.3} | {am:.3} | {:+.3} |", am - bm);
     let bc = before.tuning.completion_rate.unwrap_or(0.0);
     let ac = after.tuning.completion_rate.unwrap_or(0.0);
-    let _ = writeln!(s, "| completion_rate | {:.1}% | {:.1}% | {:+.1}pp |", bc * 100.0, ac * 100.0, (ac - bc) * 100.0);
+    let _ = writeln!(
+        s,
+        "| completion_rate | {:.1}% | {:.1}% | {:+.1}pp |",
+        bc * 100.0,
+        ac * 100.0,
+        (ac - bc) * 100.0
+    );
     let bt = before.tuning.mean_tokens.unwrap_or(0.0);
     let at = after.tuning.mean_tokens.unwrap_or(0.0);
     let _ = writeln!(s, "| mean_tokens | {bt:.0} | {at:.0} | {:+.0} |", at - bt);
     let btr = before.tuning.mean_turns.unwrap_or(0.0);
     let atr = after.tuning.mean_turns.unwrap_or(0.0);
-    let _ = writeln!(s, "| mean_turns | {btr:.2} | {atr:.2} | {:+.2} |", atr - btr);
+    let _ = writeln!(
+        s,
+        "| mean_turns | {btr:.2} | {atr:.2} | {:+.2} |",
+        atr - btr
+    );
     let _ = writeln!(
         s,
         "| total_invented | {} | {} | {:+} |",
@@ -341,7 +359,10 @@ fn render_comparison(before: &Report, after: &Report, before_path: &Path, after_
     );
 
     let _ = writeln!(s, "\n## Per-cell deltas\n");
-    let _ = writeln!(s, "| section | task | model | before | after | delta | invented Δ |");
+    let _ = writeln!(
+        s,
+        "| section | task | model | before | after | delta | invented Δ |"
+    );
     let _ = writeln!(s, "|---|---|---|---:|---:|---:|---:|");
     use std::collections::BTreeMap;
     let key = |c: &CellReport| -> (Section, String, String) {
@@ -359,21 +380,27 @@ fn render_comparison(before: &Report, after: &Report, before_path: &Path, after_
         let as_ = a.map(|c| c.mean_score).unwrap_or(0.0);
         let bi = b.map(|c| c.invented_commands.len()).unwrap_or(0);
         let ai = a.map(|c| c.invented_commands.len()).unwrap_or(0);
-        let sec = match k.0 { Section::Tuning => "tuning", Section::Holdout => "holdout" };
+        let sec = match k.0 {
+            Section::Tuning => "tuning",
+            Section::Holdout => "holdout",
+        };
         let _ = writeln!(
             s,
             "| {sec} | {} | {} | {bs:.2} | {as_:.2} | {:+.2} | {:+} |",
-            k.1, k.2, as_ - bs, ai as i64 - bi as i64
+            k.1,
+            k.2,
+            as_ - bs,
+            ai as i64 - bi as i64
         );
     }
     s
 }
 
 fn cmd_render(json_path: &Path, output: Option<&Path>) -> Result<()> {
-    let raw = fs::read_to_string(json_path)
-        .with_context(|| format!("read {}", json_path.display()))?;
-    let report: Report = serde_json::from_str(&raw)
-        .with_context(|| format!("parse {}", json_path.display()))?;
+    let raw =
+        fs::read_to_string(json_path).with_context(|| format!("read {}", json_path.display()))?;
+    let report: Report =
+        serde_json::from_str(&raw).with_context(|| format!("parse {}", json_path.display()))?;
     let md = emit_markdown(&report);
     match output {
         Some(p) => fs::write(p, md).with_context(|| format!("write {}", p.display()))?,
@@ -487,12 +514,13 @@ fn parse_clap_subcommands(help: &str) -> Vec<String> {
             continue;
         }
         let stripped = trimmed.trim_start();
-        let first = stripped
-            .split_whitespace()
-            .next()
-            .unwrap_or("")
-            .to_string();
-        if first.is_empty() || first == "help" || !first.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
+        let first = stripped.split_whitespace().next().unwrap_or("").to_string();
+        if first.is_empty()
+            || first == "help"
+            || !first
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        {
             continue;
         }
         out.push(first);
@@ -505,7 +533,13 @@ fn cmd_run(args: RunArgs) -> Result<()> {
     let base_dir = args
         .path
         .parent()
-        .map(|p| if p.as_os_str().is_empty() { Path::new(".") } else { p })
+        .map(|p| {
+            if p.as_os_str().is_empty() {
+                Path::new(".")
+            } else {
+                p
+            }
+        })
         .unwrap_or_else(|| Path::new("."))
         .to_path_buf();
 
@@ -530,8 +564,8 @@ fn cmd_run(args: RunArgs) -> Result<()> {
 
     let prior: Vec<CheckpointEntry> = match &args.checkpoint {
         Some(p) => {
-            let loaded = checkpoint::load(p)
-                .with_context(|| format!("load checkpoint {}", p.display()))?;
+            let loaded =
+                checkpoint::load(p).with_context(|| format!("load checkpoint {}", p.display()))?;
             if !loaded.is_empty() {
                 eprintln!(
                     "[jig] resuming from checkpoint: {} prior entries in {}",
@@ -557,9 +591,7 @@ fn cmd_run(args: RunArgs) -> Result<()> {
         for task in tasks {
             for model in &config.run.models {
                 for i in 0..config.run.n {
-                    if let Some(e) =
-                        checkpoint::has_entry(&prior, *section, &task.id, model, i)
-                    {
+                    if let Some(e) = checkpoint::has_entry(&prior, *section, &task.id, model, i) {
                         scored_owned.push((*section, e.trial.clone(), e.verdict.clone()));
                         continue;
                     }
@@ -630,10 +662,9 @@ fn select_sections(tuning_only: bool, holdout_only: bool) -> Vec<Section> {
 }
 
 fn load_config(path: &Path) -> Result<AgentShape> {
-    let raw = fs::read_to_string(path)
-        .with_context(|| format!("read {}", path.display()))?;
-    let cfg: AgentShape = toml::from_str(&raw)
-        .with_context(|| format!("parse {}", path.display()))?;
+    let raw = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+    let cfg: AgentShape =
+        toml::from_str(&raw).with_context(|| format!("parse {}", path.display()))?;
     Ok(cfg)
 }
 
@@ -643,8 +674,9 @@ fn emit(report: &Report, format: Format, output: Option<&Path>) -> Result<()> {
         Format::Markdown => emit_markdown(report),
     };
     match output {
-        Some(path) => fs::write(path, payload)
-            .with_context(|| format!("write {}", path.display()))?,
+        Some(path) => {
+            fs::write(path, payload).with_context(|| format!("write {}", path.display()))?
+        }
         None => println!("{payload}"),
     }
     Ok(())

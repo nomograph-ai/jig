@@ -16,9 +16,7 @@ fn nullable_bool<'de, D: Deserializer<'de>>(de: D) -> Result<bool, D::Error> {
     Ok(Option::<bool>::deserialize(de)?.unwrap_or(false))
 }
 
-fn nullable_string_vec<'de, D: Deserializer<'de>>(
-    de: D,
-) -> Result<Vec<String>, D::Error> {
+fn nullable_string_vec<'de, D: Deserializer<'de>>(de: D) -> Result<Vec<String>, D::Error> {
     Ok(Option::<Vec<String>>::deserialize(de)?.unwrap_or_default())
 }
 
@@ -54,11 +52,7 @@ pub struct JudgeResult {
 
 /// Build the prompt handed to the judge. Pure function, deterministic
 /// given inputs - exposed for testing.
-pub fn build_judge_prompt(
-    config: &AgentShape,
-    task: &Task,
-    trial: &TrialResult,
-) -> String {
+pub fn build_judge_prompt(config: &AgentShape, task: &Task, trial: &TrialResult) -> String {
     let mut bash_list = String::new();
     for (i, cmd) in trial.bash_commands.iter().enumerate() {
         bash_list.push_str(&format!("{}. {}\n", i + 1, cmd));
@@ -143,10 +137,7 @@ pub fn parse_judge_response(raw: &str) -> Result<JudgeScore> {
         serde_json::from_str(stripped).context("judge response is not valid JudgeScore JSON")?;
 
     if !(0.0..=1.0).contains(&parsed.score) {
-        return Err(anyhow!(
-            "judge score {} outside [0.0, 1.0]",
-            parsed.score
-        ));
+        return Err(anyhow!("judge score {} outside [0.0, 1.0]", parsed.score));
     }
     Ok(parsed)
 }
@@ -176,14 +167,9 @@ fn invoke_judge(prompt: &str, judge_model: &str) -> Result<JudgeScore> {
             .write_all(prompt.as_bytes())
             .context("write judge prompt")?;
     }
-    let output = child
-        .wait_with_output()
-        .context("wait judge subprocess")?;
+    let output = child.wait_with_output().context("wait judge subprocess")?;
     if !output.status.success() {
-        return Err(anyhow!(
-            "judge exited with status {}",
-            output.status
-        ));
+        return Err(anyhow!("judge exited with status {}", output.status));
     }
     let raw = String::from_utf8_lossy(&output.stdout);
     parse_judge_response(&raw)
@@ -288,10 +274,8 @@ mod tests {
 
     #[test]
     fn prompt_includes_all_required_sections() {
-        let config: AgentShape = toml::from_str(include_str!(
-            "../examples/agent-shape.example.toml"
-        ))
-        .unwrap();
+        let config: AgentShape =
+            toml::from_str(include_str!("../examples/agent-shape.example.toml")).unwrap();
         let task = &config.tasks.tuning[0];
         let trial = TrialResult {
             task_id: task.id.clone(),

@@ -2,6 +2,7 @@
 name = "nomograph-jig"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.88"
 description = "Agent-shape testing harness. Runs runtime-in-the-loop task batteries against a tool's CLI to measure first-try command success, tokens, turns, and invented-command count. TOML-driven, LLM-as-judge scored."
 authors = ["Andrew Dunn <andunn@gitlab.com>"]
 repository = "https://gitlab.com/nomograph/jig"
@@ -10,6 +11,14 @@ keywords = ["ai", "agent", "testing", "claude", "benchmark"]
 categories = ["command-line-utilities", "development-tools::testing"]
 readme = "README.md"
 license = "MIT"
+exclude = [
+    "target/*",
+    ".gitlab-ci.yml",
+    "TIDY.md",
+    "agent-shape-reports/*",
+    "*.checkpoint.jsonl",
+    "/jig",
+]
 
 [lib]
 name = "jig"
@@ -25,6 +34,11 @@ serde = { version = "1", features = ["derive"] }
 toml = "0.8"
 serde_json = "1"
 anyhow = "1"
+
+[dev-dependencies]
+tempfile = "3"
+assert_cmd = "2"
+predicates = "3"
 
 [profile.release]
 lto = true

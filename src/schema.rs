@@ -149,7 +149,11 @@ mod tests {
         let parsed: AgentShape = toml::from_str(EXAMPLE).expect("parse example");
         for task in &parsed.tasks.tuning {
             assert!(!task.author.is_empty(), "task {} missing author", task.id);
-            assert!(!task.created_at.is_empty(), "task {} missing created_at", task.id);
+            assert!(
+                !task.created_at.is_empty(),
+                "task {} missing created_at",
+                task.id
+            );
             assert!(
                 !task.sealed_against_tag.is_empty(),
                 "task {} missing sealed_against_tag",

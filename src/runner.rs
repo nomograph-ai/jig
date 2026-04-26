@@ -78,9 +78,7 @@ pub fn parse_event_stream(
         };
 
         if event.get("type").and_then(|v| v.as_str()) == Some("assistant")
-            && let Some(content) = event
-                .pointer("/message/content")
-                .and_then(|v| v.as_array())
+            && let Some(content) = event.pointer("/message/content").and_then(|v| v.as_array())
         {
             for item in content {
                 match item.get("type").and_then(|v| v.as_str()) {
@@ -235,7 +233,8 @@ pub fn run_trial(
         let _ = run_fixture_cmd(resolved.to_string_lossy().as_ref(), base_dir);
     }
 
-    let mut result = parse_event_stream(collected.into_iter(), &task.id, model, config.run.turn_cap);
+    let mut result =
+        parse_event_stream(collected.into_iter(), &task.id, model, config.run.turn_cap);
     result.duration_ms = duration_ms;
     result.timed_out = timed_out;
     if timed_out {

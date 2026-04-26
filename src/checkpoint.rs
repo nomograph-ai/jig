@@ -38,8 +38,8 @@ pub fn load(path: &Path) -> Result<Vec<CheckpointEntry>> {
     if !path.exists() {
         return Ok(Vec::new());
     }
-    let file = std::fs::File::open(path)
-        .with_context(|| format!("open checkpoint {}", path.display()))?;
+    let file =
+        std::fs::File::open(path).with_context(|| format!("open checkpoint {}", path.display()))?;
     let reader = BufReader::new(file);
     let mut out = Vec::new();
     for (i, line) in reader.lines().enumerate() {
@@ -49,10 +49,7 @@ pub fn load(path: &Path) -> Result<Vec<CheckpointEntry>> {
         }
         match serde_json::from_str::<CheckpointEntry>(&line) {
             Ok(e) => out.push(e),
-            Err(e) => eprintln!(
-                "[jig] skipping malformed checkpoint line {}: {e}",
-                i + 1
-            ),
+            Err(e) => eprintln!("[jig] skipping malformed checkpoint line {}: {e}", i + 1),
         }
     }
     Ok(out)

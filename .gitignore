@@ -6,3 +6,14 @@ Cargo.lock.bak
 *.swp
 .idea/
 .vscode/
+
+# Local tidy/audit notes (not for publish or remote)
+TIDY.md
+
+# Reports + checkpoints written by `jig run`. Generated artifacts; the
+# real ones live alongside the subject tool, not here.
+agent-shape-reports/
+*.checkpoint.jsonl
+
+# Built binary copy (parallel to synthesist's release-binary convention)
+/jig

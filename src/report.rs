@@ -72,8 +72,14 @@ pub fn build_report(
     run_timestamp: String,
     judge_model: String,
 ) -> Report {
-    let tuning: Vec<&ScoredTrial> = scored.iter().filter(|s| s.section == Section::Tuning).collect();
-    let holdout: Vec<&ScoredTrial> = scored.iter().filter(|s| s.section == Section::Holdout).collect();
+    let tuning: Vec<&ScoredTrial> = scored
+        .iter()
+        .filter(|s| s.section == Section::Tuning)
+        .collect();
+    let holdout: Vec<&ScoredTrial> = scored
+        .iter()
+        .filter(|s| s.section == Section::Holdout)
+        .collect();
 
     Report {
         subject: config.subject.name.clone(),
@@ -110,9 +116,7 @@ fn battery_summary(scored: &[&ScoredTrial]) -> BatteryReport {
     BatteryReport {
         n_trials: n,
         mean_score: Some(mean(&scores)),
-        completion_rate: Some(
-            completions.iter().filter(|c| **c).count() as f64 / n as f64,
-        ),
+        completion_rate: Some(completions.iter().filter(|c| **c).count() as f64 / n as f64),
         mean_tokens: Some(mean(&tokens)),
         mean_turns: Some(mean(&turns)),
         total_invented_commands: invented,
@@ -210,10 +214,7 @@ pub fn emit_markdown(report: &Report) -> String {
 
     let _ = writeln!(s, "\n## Holdout battery\n");
     if report.holdout.n_trials == 0 {
-        let _ = writeln!(
-            s,
-            "_empty in v1 (schema supports it; corpus deferred)_"
-        );
+        let _ = writeln!(s, "_empty in v1 (schema supports it; corpus deferred)_");
     } else {
         write_battery(&mut s, &report.holdout);
     }
@@ -277,11 +278,7 @@ fn write_battery(s: &mut String, b: &BatteryReport) {
         "- total_invented_commands: {}",
         b.total_invented_commands
     );
-    let _ = writeln!(
-        s,
-        "- total_fallback_to_sql: {}",
-        b.total_fallback_to_sql
-    );
+    let _ = writeln!(s, "- total_fallback_to_sql: {}", b.total_fallback_to_sql);
 }
 
 #[cfg(test)]
@@ -339,8 +336,7 @@ mod tests {
     }
 
     fn sample_config() -> AgentShape {
-        toml::from_str(include_str!("../examples/agent-shape.example.toml"))
-            .expect("parse example")
+        toml::from_str(include_str!("../examples/agent-shape.example.toml")).expect("parse example")
     }
 
     #[test]
@@ -361,7 +357,15 @@ mod tests {
         let t1b = trial("t1", "m1", 200, 3);
         let t2 = trial("t2", "m2", 150, 2);
         let v1a = verdict("t1", "m1", 1.0, true, vec![], false, Some(0.0));
-        let v1b = verdict("t1", "m1", 0.5, true, vec!["synthesist tree show"], false, Some(0.1));
+        let v1b = verdict(
+            "t1",
+            "m1",
+            0.5,
+            true,
+            vec!["synthesist tree show"],
+            false,
+            Some(0.1),
+        );
         let v2 = verdict("t2", "m2", 0.0, false, vec![], true, None);
 
         let scored = vec![
@@ -398,7 +402,10 @@ mod tests {
         assert_eq!(t1m1.n, 2);
         assert!((t1m1.mean_score - 0.75).abs() < 1e-9);
         assert!(t1m1.score_stddev > 0.0);
-        assert_eq!(t1m1.invented_commands, vec!["synthesist tree show".to_string()]);
+        assert_eq!(
+            t1m1.invented_commands,
+            vec!["synthesist tree show".to_string()]
+        );
         assert!((t1m1.mean_irr_delta.unwrap() - 0.05).abs() < 1e-9);
     }
 
