@@ -1,0 +1,134 @@
+# jig's own agent-shape.toml.
+#
+# The methodology applies recursively: jig is itself a CLI agents
+# might use, so it earns the same surface-shape measurement as any
+# other subject. Tuning tasks here probe the offline subcommands
+# (check, render, compare); run and rejudge are intentionally absent
+# because they need claude in the loop and the methodology measures
+# the agent reaching for the right read paths first.
+#
+# The expected workflow for a self-test run:
+#   make build
+#   jig check agent-shape.toml --binary ./jig
+#   jig run agent-shape.toml --tuning-only --n 3
+#
+# Running a real baseline costs claude API tokens and is not part of
+# CI; it is what an external user runs once they want to characterise
+# jig's own surface.
+
+[subject]
+name = "jig"
+binary = "jig"
+description = "Agent-shape testing harness. Subcommands: run, check, render, compare, rejudge."
+version_pin = "0.1.0"
+
+[fixture]
+setup = "scripts/agent-shape-fixture.sh"
+workdir = "fixtures/jig-self-test"
+
+[run]
+n = 5
+models = ["claude-opus-4-7", "claude-sonnet-4-6"]
+turn_cap = 3
+timeout_seconds = 120
+
+[judge]
+model = "claude-haiku-4-5"
+double_score = true
+required_fields = [
+  "score",
+  "first_command",
+  "first_command_existed",
+  "completed",
+  "invented_commands",
+  "fallback_to_sql",
+  "reasoning",
+]
+rubric = """
+You are judging whether an agent completed a CLI task correctly using
+the `jig` agent-shape testing harness.
+
+Score on a 4-point rubric:
+  1.00  completed correctly, first command attempt was real and worked
+  0.50  completed correctly, but reached for non-existent commands first
+  0.25  completed via raw shell/grep/jq fallback instead of the tool
+  0.00  did not complete
+
+Commands that exist in jig (top-level subcommands):
+  jig run | check | render | compare | rejudge | help
+plus the global flags: --help, --version.
+
+`jig run` and `jig rejudge` spawn claude and cost API; for offline
+exploration use `jig check`, `jig render`, and `jig compare`.
+
+Anything not on that list, or shaped like `jig list-tasks`,
+`jig show`, `jig status`, `jig init`, etc., counts as invented.
+
+For each transcript, identify:
+  - first_command:         the exact shell command the agent first tried
+  - first_command_existed: whether that command exists in the tool's CLI
+  - completed:             did the agent finish what the user asked
+  - invented_commands:     list every non-existent jig command the agent tried
+  - fallback_to_sql:       did the agent invoke jq, grep, awk, sqlite,
+                           or sed against the fixture files instead of
+                           using jig
+  - reasoning:             one short paragraph
+
+Respond in strict JSON with exactly the fields listed above. No
+markdown fences. No prose outside the JSON object.
+"""
+
+[commands]
+top_level = ["run", "check", "render", "compare", "rejudge"]
+
+[[tasks.tuning]]
+id = "validate-config-01"
+summary = "Validate the agent-shape.toml in this fixture"
+prompt = "There is an agent-shape.toml in this directory. Use jig to validate it and report whether it parses cleanly."
+success_criteria = [
+  "Agent invokes `jig check` against the TOML",
+  "Agent does not invoke jq, grep, awk, or sed against the TOML",
+]
+author = "andrew@dunn.dev"
+created_at = "2026-04-25"
+sealed_against_tag = "jig-v0.1.0"
+
+[[tasks.tuning]]
+id = "render-report-01"
+summary = "Render an existing JSON report to Markdown"
+prompt = "There is a baseline.json file in this directory produced by a prior jig run. Render it as Markdown for human reading."
+success_criteria = [
+  "Agent invokes `jig render` against baseline.json",
+  "Agent does not invoke jq, grep, or sed",
+]
+author = "andrew@dunn.dev"
+created_at = "2026-04-25"
+sealed_against_tag = "jig-v0.1.0"
+
+[[tasks.tuning]]
+id = "compare-reports-01"
+summary = "Quantify the change between baseline and treated reports"
+prompt = "There are two JSON reports in this directory: baseline.json and treated.json. Show me the per-cell delta between them."
+success_criteria = [
+  "Agent invokes `jig compare` against both files",
+  "Agent does not invoke jq, awk, or sed to compute the delta by hand",
+]
+author = "andrew@dunn.dev"
+created_at = "2026-04-25"
+sealed_against_tag = "jig-v0.1.0"
+
+[[tasks.tuning]]
+id = "drift-check-01"
+summary = "Cross-reference rubric against the binary's --help"
+prompt = "I just edited the agent-shape.toml's [commands] section. Use jig to verify it still matches the binary's --help."
+success_criteria = [
+  "Agent invokes `jig check --binary` with the local jig binary",
+  "Agent does not parse --help by hand with grep or awk",
+]
+author = "andrew@dunn.dev"
+created_at = "2026-04-25"
+sealed_against_tag = "jig-v0.1.0"
+
+# Hold-out tasks: empty in v1, by design. Populated later by an
+# author who has not seen the tuning-set behaviour.
+# [[tasks.holdout]]
