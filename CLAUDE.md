@@ -32,21 +32,12 @@ Modules, one concern each:
 - `checkpoint`: append-only JSONL of completed cells so killed runs
   resume.
 
-Methodology and rubric anchors live outside this repo:
-
-- `keaton/research/synthesist-read-surface-audit.md`: end-to-end
-  treatment study with the corrected baseline-vs-treated comparison
-  and methodology lessons.
-- `synthesist/agent-shape.toml`: production reference TOML.
-- `lever/canary/initial-results.md`: precision-vs-brevity finding on
-  judge prompts.
-
 ## Conventions
 
 - **No em dashes**, anywhere. Source comments, help text, README,
   CHANGELOG, commit messages, docstrings. They are an LLM tell.
-- **Lever compliance**: `#![deny(warnings, clippy::all)]` at the
-  crate root. No `#[allow(...)]` escape hatches without an inline
+- **Strict lints**: `#![deny(warnings, clippy::all)]` at the crate
+  root. No `#[allow(...)]` escape hatches without an inline
   justification comment.
 - **File size**: keep source files focused on one concern. Modules
   split before files grow into `cmd_*` collections.
@@ -61,9 +52,8 @@ Methodology and rubric anchors live outside this repo:
 ## Subject tools
 
 A tool is a subject when it ships an `agent-shape.toml` at its repo
-root. First subject: synthesist. New adopters use
-`templates/agent-shape.toml` as a starter; the worked example lives at
-`examples/agent-shape.example.toml`.
+root. New adopters use `templates/agent-shape.toml` as a starter;
+the worked example lives at `examples/agent-shape.example.toml`.
 
 ## Study methodology
 
@@ -78,8 +68,7 @@ delta for significance.
 
 `n` is configurable (default 10 for iteration, 20+ for CI advisory).
 Judge model is configurable (default Haiku 4.5). Hold-out task
-support is in the schema from v1 (`tasks.holdout`); corpus populates
-in v2 once independent authors write tasks against the same surface.
+support is in the schema from v1 (`tasks.holdout`).
 
 ## Release Checklist
 

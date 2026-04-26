@@ -19,20 +19,10 @@ local models) once the runner accepts a configurable spawn command.
 
 ## Why this exists
 
-Agents like Claude Opus and Sonnet reach for commands and arguments
-that tools do not always provide. When an agent invents a non-existent
-command or falls through to raw SQL or grep, that is a signal about
-the tool's surface, not the agent. `jig` measures where that happens
-so the tool can be reshaped.
-
-The methodology is anchored in three nomograph findings:
-
-- 5 worked examples are sufficient to recover near-ceiling accuracy
-  (gkg-bench Phase 5).
-- Precise-and-brief errors beat vague-and-verbose (lever canary
-  bench).
-- Removing one confusing tool can outweigh adding six (sysml-bench
-  O12).
+Agents reach for commands and arguments that tools do not always
+provide. When an agent invents a non-existent command or falls back
+to a generic shell tool, that is a signal about the surface, not the
+agent. `jig` measures where that happens so the tool can be reshaped.
 
 ## Install
 
@@ -109,28 +99,27 @@ The `agent-shape.toml` declares everything the harness needs:
 - `[commands].top_level` (optional): subcommands the rubric claims
   exist; `jig check --binary` cross-references this with the CLI.
 
-`examples/agent-shape.example.toml` is the worked example targeting
-synthesist; `templates/agent-shape.toml` is the starter for new
-adopters. The schema lives in [`src/schema.rs`](src/schema.rs).
+`examples/agent-shape.example.toml` is a worked example;
+`templates/agent-shape.toml` is the starter for new adopters. The
+schema lives in [`src/schema.rs`](src/schema.rs).
 
 ## Methodology notes
 
-- **Rubric drift** is the dominant source of measurement error.
-  Twice in the synthesist study the rubric missed real commands and
-  the judge counted them as inventions, producing phantom regressions.
-  `jig check --binary` mechanically catches the binary side; rubric
-  prose still has to be hand-maintained. Land subcommand changes and
-  rubric updates in the same commit.
+- **Rubric drift** is the dominant source of measurement error. When
+  a rubric misses real commands, the judge counts them as inventions
+  and produces phantom regressions. `jig check --binary` mechanically
+  catches the binary side; rubric prose still has to be hand-maintained.
+  Land subcommand changes and rubric updates in the same commit.
 - **Judge variance**: typical IRR delta is 0.05 to 0.30 per cell at
   n=5. Don't draw conclusions from sub-0.20 effects without n>=20 or
   Cliff's delta significance testing.
-- **Fixture leakage**: the runner strips `SYNTHESIST_*` environment
-  variables before spawning, but every subject tool needs to do the
-  same in its own fixture script.
+- **Fixture leakage**: subject tools that read environment variables
+  for session or run identity should strip those variables in their
+  fixture scripts so trials start from a clean slate.
 - **Holdout corpus**: tuning-only studies overfit to the designer's
-  tasks. The schema supports `tasks.holdout` from v1; the corpus
-  populates in v2 once independent authors who haven't seen the
-  tuning data write tasks against the same surface.
+  tasks. The schema supports a `tasks.holdout` battery so independent
+  authors can write tasks against the same surface without seeing the
+  tuning set.
 
 ## Building
 

@@ -15,9 +15,8 @@ your tool's working state to a known starting point. Idempotent.
 Strips inherited env vars to avoid leaking the developer's session
 into a trial.
 
-See `synthesist/scripts/agent-shape-fixture.sh` in the nomograph
-estate for a worked example (creates trees, specs, sessions in a
-synthesist instance under `fixtures/agent-shape-realistic/`).
+See `examples/agent-shape.example.toml` in this repo for a worked
+fixture/task layout you can mirror in your own repo.
 
 ## Adoption checklist
 
@@ -35,28 +34,17 @@ synthesist instance under `fixtures/agent-shape-realistic/`).
 
 ## What to watch for
 
-- **Rubric staleness.** Twice in the synthesist study the rubric
-  missed real commands and the judge counted them as inventions.
+- **Rubric staleness.** When a rubric misses real commands, the
+  judge counts them as inventions and produces phantom regressions.
   `jig check --binary` flags it; `[commands].top_level` is the
   contract. Land subcommand changes and rubric updates in the same
   commit.
 - **Judge variance.** Typical IRR delta is 0.05-0.30 per cell at
-  n=5. Don't draw conclusions from sub-0.20 effects without n≥20
+  n=5. Don't draw conclusions from sub-0.20 effects without n>=20
   or Cliff's delta significance testing.
 - **Fixture leakage.** If your tool reads env vars (e.g.
   `<TOOL>_DIR`, `<TOOL>_SESSION`), strip them in the fixture
-  script AND in the runner (jig already does this for synthesist).
-  Otherwise the developer's local state contaminates trials.
-- **Hold-out corpus.** v1 tuning-only studies overfit to the
-  designer's tasks. Plan for v2 hold-out tasks authored by someone
-  who hasn't seen the tuning data.
-
-## Background reading
-
-- `keaton/research/synthesist-read-surface-audit.md`: full study
-  end-to-end, including the corrected-baseline-vs-treated comparison
-  and methodology lessons.
-- `synthesist/agent-shape.toml`: production reference.
-- `lever/canary/initial-results.md`: the precision-vs-brevity finding
-  on judge prompts (precise short rubrics outperform vague verbose
-  ones).
+  script. Otherwise the caller's local state contaminates trials.
+- **Hold-out corpus.** Tuning-only studies overfit to the designer's
+  tasks. Plan for hold-out tasks authored by someone who hasn't seen
+  the tuning data.

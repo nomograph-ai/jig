@@ -9,8 +9,8 @@
 # `jig run agent-shape.toml --tuning-only` to fire the first
 # baseline.
 #
-# See `keaton/research/synthesist-read-surface-audit.md` for what a
-# real adoption + treatment cycle looks like end-to-end.
+# See `examples/agent-shape.example.toml` in this repo for a worked
+# layout you can mirror.
 
 [subject]
 # Tool name. Same as the binary, generally.
@@ -38,8 +38,8 @@ n = 10
 # Agent runtimes under test. The runner spawns claude -p today;
 # future versions will accept a configurable spawn command.
 models = ["claude-opus-4-7", "claude-sonnet-4-6"]
-# Cap at 3 turns per the lever canary-bench finding that correction
-# loops decay exponentially after 2-3 attempts. Advisory in v1.
+# Short turn cap: correction loops typically decay after the first
+# few turns. Tight cap keeps cost bounded without truncating signal.
 turn_cap = 3
 # Per-trial wall-clock timeout.
 timeout_seconds = 180

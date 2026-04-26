@@ -18,9 +18,9 @@ pub struct AgentShape {
     /// direction (binary advertising commands the rubric omits, or
     /// rubric listing commands the binary doesn't expose).
     ///
-    /// Twice in the synthesist study the rubric was missing real
-    /// commands and the judge counted them as inventions, producing
-    /// phantom regressions. This list closes that loop.
+    /// Without this list, a rubric that misses a real command will
+    /// have the judge count it as an invention, producing phantom
+    /// regressions.
     #[serde(default)]
     pub commands: Option<ExpectedCommands>,
 }
@@ -69,8 +69,8 @@ pub struct RunConfig {
     /// Agent models under test.
     pub models: Vec<String>,
     /// Max agent turns before the trial is judged unfinished.
-    /// Anchored on lever canary-bench finding: correction loops decay
-    /// exponentially after 2-3 turns.
+    /// A short cap is enough: correction loops typically decay after
+    /// the first few turns, and a tight cap keeps cost bounded.
     pub turn_cap: u32,
     /// Per-trial wall-clock timeout.
     pub timeout_seconds: u64,

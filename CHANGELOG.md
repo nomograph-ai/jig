@@ -10,23 +10,22 @@ the project follows semantic versioning.
 
 - Project tidy pass before the first non-bootstrap tag: shared
   `rustfmt.toml` (edition 2024, max width 100) and `clippy.toml`
-  (MSRV 1.88) matching the wider nomograph estate; integration test
-  suite covering `--version`, `--help`, `check`, `render`, and
-  `compare` against the release binary; `Makefile` mirroring synthesist
-  verbs (`build`, `test`, `lint`, `check`, `install`); `CONTRIBUTING.md`
-  short-form contributor guide; `deny.toml` with the standard nomograph
-  license allow-list; self-hosted `agent-shape.toml` so jig itself can
-  be measured under the methodology it implements.
+  (MSRV 1.88); integration test suite covering `--version`, `--help`,
+  `check`, `render`, and `compare` against the release binary;
+  `Makefile` with `build` / `test` / `lint` / `check` / `install`
+  verbs; `CONTRIBUTING.md` short-form contributor guide; `deny.toml`
+  with a standard license allow-list; self-hosted `agent-shape.toml`
+  so jig itself can be measured under the methodology it implements.
 - Cargo metadata: `rust-version = "1.88"` pin and an `exclude` list so
   the published tarball drops CI config, local audit notes, and
   generated artifacts.
 
 ### Changed
 
-- README rewritten with the synthesist density target: badges,
-  install, quickstart, command reference, methodology pointer.
-- CLAUDE.md rewritten to match the rest of the estate (build verbs,
-  release checklist, no em dashes one-liner, methodology pointer).
+- README rewritten to a higher information density: badges, install,
+  quickstart, command reference, methodology pointer.
+- CLAUDE.md rewritten with build verbs, release checklist, house
+  style, and architecture notes.
 - Em dashes purged from every shipped artifact: source comments, help
   text, templates, README, CLAUDE.md, and the Markdown report's
   empty-list placeholder.
@@ -61,12 +60,11 @@ methodology research; no breaking-change history before this point.
 - Subject-mismatch guard on `run`: `--subject <name>` aborts when the
   TOML's `subject.name` does not match, preventing the wrong rubric
   from being applied to a fixture.
-- Strips `SYNTHESIST_*` environment variables before spawning the
-  agent or fixture commands, preventing the developer's session
-  context from contaminating trials.
-- `examples/agent-shape.example.toml`: worked example targeting
-  `synthesist`. `templates/agent-shape.toml`: starter template with
-  REPLACE-ME markers for new adopters.
+- Strips known subject-tool environment variables before spawning
+  the agent or fixture commands, so trials start from a clean slate.
+- `examples/agent-shape.example.toml`: worked example.
+  `templates/agent-shape.toml`: starter template with REPLACE-ME
+  markers for new adopters.
 - Library crate: `nomograph-jig` exposes `runner`, `judge`, `report`,
   `schema`, and `checkpoint` modules so callers can drive the harness
   programmatically.

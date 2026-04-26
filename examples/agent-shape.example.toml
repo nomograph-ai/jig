@@ -18,8 +18,8 @@ workdir = "fixtures/synthesist-realistic"
 [run]
 n = 10
 models = ["claude-opus-4-7", "claude-sonnet-4-6"]
-# Cap at 3 turns per lever canary-bench finding: correction loops
-# decay exponentially after 2-3 turns.
+# Short turn cap: correction loops decay quickly after the first few
+# turns, so a tight cap keeps cost bounded without truncating signal.
 turn_cap = 3
 timeout_seconds = 180
 
@@ -60,7 +60,7 @@ Respond in strict JSON with exactly the fields listed above.
 [[tasks.tuning]]
 id = "exploration-01"
 summary = "What's going on in this project?"
-prompt = "You are looking at an unfamiliar nomograph project. Use synthesist to give me a quick overview of what is currently being worked on."
+prompt = "You are looking at an unfamiliar project. Use synthesist to give me a quick overview of what is currently being worked on."
 success_criteria = [
   "Agent invokes `synthesist status` within the first 2 commands",
   "Agent does not invoke raw sqlite or grep",
@@ -71,8 +71,8 @@ sealed_against_tag = "synthesist-v5.1.0"
 
 [[tasks.tuning]]
 id = "cross-tree-query-01"
-summary = "Find all gkg-related work across trees"
-prompt = "Find every spec whose name mentions 'gkg' across every tree in this synthesist instance."
+summary = "Find every spec whose name matches a substring across every tree"
+prompt = "Find every spec whose name mentions 'docs' across every tree in this synthesist instance."
 success_criteria = [
   "Agent does not invoke raw sqlite",
   "Agent does not loop `spec list` per tree unless there is no better alternative",
@@ -95,7 +95,7 @@ sealed_against_tag = "synthesist-v5.1.0"
 [[tasks.tuning]]
 id = "session-drill-down-01"
 summary = "Enumerate claims written under a specific session"
-prompt = "A session named 'lever-compliance' recently wrote several claims. List every claim it wrote so I can reconstruct what happened in that session."
+prompt = "A session named 'docs-cleanup' recently wrote several claims. List every claim it wrote so I can reconstruct what happened in that session."
 success_criteria = [
   "Agent does not invoke raw sqlite",
   "Agent uses an existing synthesist read command if one exists",
