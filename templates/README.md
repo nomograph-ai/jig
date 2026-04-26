@@ -5,12 +5,12 @@ methodology.
 
 ## What's here
 
-- `agent-shape.toml` — starter rubric + runner + task config. Fill
+- `agent-shape.toml`: starter rubric + runner + task config. Fill
   in the `REPLACE-ME` markers and your tasks.
 
 ## What you also need to write
 
-`scripts/agent-shape-fixture.sh` — a script that wipes and rebuilds
+`scripts/agent-shape-fixture.sh`: a script that wipes and rebuilds
 your tool's working state to a known starting point. Idempotent.
 Strips inherited env vars to avoid leaking the developer's session
 into a trial.
@@ -24,8 +24,8 @@ synthesist instance under `fixtures/agent-shape-realistic/`).
 1. Copy `agent-shape.toml` to your repo root. Replace markers.
 2. Write `scripts/agent-shape-fixture.sh` that seeds realistic state.
 3. Add `[commands].top_level` entries that match `<your-tool> --help`.
-4. `jig check agent-shape.toml --binary $(which your-tool)` —
-   should report 0 drift.
+4. `jig check agent-shape.toml --binary $(which your-tool)`,
+   which should report 0 drift.
 5. `jig run agent-shape.toml --tuning-only --n 5` for a smoke run
    (~$2-5 in API depending on agent model + task length).
 6. Inspect the report. Iterate the rubric and tasks until trials
@@ -53,10 +53,10 @@ synthesist instance under `fixtures/agent-shape-realistic/`).
 
 ## Background reading
 
-- `keaton/research/synthesist-read-surface-audit.md` — full study
+- `keaton/research/synthesist-read-surface-audit.md`: full study
   end-to-end, including the corrected-baseline-vs-treated comparison
   and methodology lessons.
-- `synthesist/agent-shape.toml` — production reference.
-- `lever/canary/initial-results.md` — the precision-vs-brevity finding
+- `synthesist/agent-shape.toml`: production reference.
+- `lever/canary/initial-results.md`: the precision-vs-brevity finding
   on judge prompts (precise short rubrics outperform vague verbose
   ones).

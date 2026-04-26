@@ -1,4 +1,4 @@
-# agent-shape.toml — starter template for adopting jig in a new tool.
+# agent-shape.toml: starter template for adopting jig in a new tool.
 #
 # Drop this file at the root of any CLI repo, fill in the markers
 # below, then:

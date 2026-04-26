@@ -238,7 +238,7 @@ pub fn emit_markdown(report: &Report) -> String {
             .map(|d| format!("{d:.3}"))
             .unwrap_or_else(|| "n/a".into());
         let invented_preview = if c.invented_commands.is_empty() {
-            "—".into()
+            "-".into()
         } else {
             c.invented_commands.join("; ")
         };

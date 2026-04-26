@@ -114,7 +114,7 @@ struct RunArgs {
     format: Format,
 
     /// Append each completed (trial, verdict) pair to this JSONL.
-    /// On restart, already-recorded cells are skipped — a killed
+    /// On restart, already-recorded cells are skipped, so a killed
     /// run resumes without losing prior work.
     #[arg(long)]
     checkpoint: Option<PathBuf>,

@@ -1,4 +1,4 @@
-# jig — Agent-Shape Testing Harness
+# jig: Agent-Shape Testing Harness
 
 ## What this is
 
@@ -34,8 +34,8 @@ Lib + binary crate. `lib.rs` re-exports modules for testing.
 
 Design documents that drive this tool:
 
-- `keaton/agent-shape-jig` spec (synthesist) — task plan, study design
-- `keaton/synthesist-read-surface` spec (synthesist) — first subject
+- `keaton/agent-shape-jig` spec (synthesist): task plan, study design
+- `keaton/synthesist-read-surface` spec (synthesist): first subject
 
 ## Conventions
 
