@@ -1,3 +1,5 @@
+![hero](hero.svg)
+
 # jig
 
 [![pipeline](https://gitlab.com/nomograph/jig/badges/main/pipeline.svg)](https://gitlab.com/nomograph/jig/-/pipelines)
@@ -141,3 +143,7 @@ shelling out to the CLI.
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+---
+Built by Andrew Dunn, 2026.
+

@@ -1,0 +1,104 @@
+<svg viewBox="0 0 1200 430" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="1200" height="430" fill="#faf6ed" stroke="#2c2417" stroke-width="3"/>
+
+  <!-- Title bar -->
+  <rect x="0" y="0" width="1200" height="36" fill="#2c2417"/>
+  <text x="16" y="24" font-family="'IBM Plex Mono', monospace" font-size="14" fill="#faf6ed" font-weight="bold">jig -- agent-shape testing harness</text>
+  <text x="1184" y="24" font-family="'IBM Plex Mono', monospace" font-size="11" fill="#c4b99a" text-anchor="end">rust + claude -p &#183; LLM-as-judge</text>
+
+  <!-- Subhead strip -->
+  <rect x="40" y="52" width="1120" height="30" fill="none" stroke="#c4b99a" stroke-width="1"/>
+  <text x="56" y="72" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">spec -&gt; trial battery -&gt; transcripts -&gt; judge -&gt; report &#183; runtime-agnostic, retrospective across tags</text>
+  <text x="1144" y="72" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#2c2417" text-anchor="end">first-try success = primary metric</text>
+
+  <!-- Left: Inputs -->
+  <rect x="40" y="100" width="260" height="250" fill="none" stroke="#2c2417" stroke-width="2"/>
+  <rect x="40" y="100" width="260" height="28" fill="#2c2417"/>
+  <text x="170" y="118" font-family="'IBM Plex Mono', monospace" font-size="11" fill="#faf6ed" text-anchor="middle" font-weight="bold">INPUTS</text>
+
+  <text x="56" y="148" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#2c2417" font-weight="bold">agent-shape.toml</text>
+  <text x="56" y="164" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">  [subject]   tool, binary, version_pin</text>
+  <text x="56" y="180" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">  [fixture]   setup, workdir, strip_env</text>
+  <text x="56" y="196" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">  [run]       n, models, turn_cap</text>
+  <text x="56" y="212" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">  [judge]     rubric, double_score</text>
+
+  <line x1="56" y1="226" x2="284" y2="226" stroke="#c4b99a" stroke-width="1"/>
+
+  <text x="56" y="246" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#2c2417" font-weight="bold">[tasks.tuning]</text>
+  <text x="56" y="262" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">  prompt + success_criteria</text>
+  <text x="56" y="278" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">  sealed_against_tag</text>
+
+  <text x="56" y="302" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#2c2417" font-weight="bold">[tasks.holdout]</text>
+  <text x="56" y="318" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">  independent author</text>
+  <text x="56" y="334" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">  no tuning-set leakage</text>
+
+  <!-- Arrow inputs -> process -->
+  <line x1="300" y1="225" x2="350" y2="225" stroke="#2c2417" stroke-width="1.5"/>
+  <polygon points="350,220 360,225 350,230" fill="#2c2417"/>
+
+  <!-- Center: Process -->
+  <rect x="360" y="100" width="320" height="250" fill="none" stroke="#2c2417" stroke-width="2"/>
+  <rect x="360" y="100" width="320" height="28" fill="#2c2417"/>
+  <text x="520" y="118" font-family="'IBM Plex Mono', monospace" font-size="11" fill="#faf6ed" text-anchor="middle" font-weight="bold">PROCESS</text>
+
+  <text x="376" y="148" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#2c2417" font-weight="bold">cell = (task, model, trial)</text>
+  <text x="376" y="164" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">  fixture setup runs before each trial</text>
+  <text x="376" y="180" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">  state isolation per cell</text>
+
+  <line x1="376" y1="194" x2="664" y2="194" stroke="#c4b99a" stroke-width="1"/>
+
+  <text x="376" y="214" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#2c2417" font-weight="bold">runner</text>
+  <text x="376" y="230" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">  spawn claude -p &lt;prompt&gt;</text>
+  <text x="376" y="246" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">  capture stream-json transcript</text>
+
+  <line x1="376" y1="260" x2="664" y2="260" stroke="#c4b99a" stroke-width="1"/>
+
+  <text x="376" y="280" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#2c2417" font-weight="bold">judge</text>
+  <text x="376" y="296" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">  rubric -&gt; strict JSON verdict</text>
+  <text x="376" y="312" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">  optional double_score for IRR</text>
+
+  <text x="376" y="336" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#2c2417" font-weight="bold">checkpoint</text>
+  <text x="466" y="336" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">append-only JSONL, killed runs resume</text>
+
+  <!-- Arrow process -> outputs -->
+  <line x1="680" y1="225" x2="730" y2="225" stroke="#2c2417" stroke-width="1.5"/>
+  <polygon points="730,220 740,225 730,230" fill="#2c2417"/>
+
+  <!-- Right: Outputs -->
+  <rect x="740" y="100" width="420" height="250" fill="none" stroke="#2c2417" stroke-width="2"/>
+  <rect x="740" y="100" width="420" height="28" fill="#2c2417"/>
+  <text x="950" y="118" font-family="'IBM Plex Mono', monospace" font-size="11" fill="#faf6ed" text-anchor="middle" font-weight="bold">OUTPUTS</text>
+
+  <text x="756" y="148" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#2c2417" font-weight="bold">report.json</text>
+  <text x="864" y="148" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">canonical machine output</text>
+  <text x="756" y="164" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#2c2417" font-weight="bold">report.md</text>
+  <text x="864" y="164" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">human review, no API spend</text>
+
+  <line x1="756" y1="178" x2="1144" y2="178" stroke="#c4b99a" stroke-width="1"/>
+
+  <text x="756" y="198" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#2c2417" font-weight="bold">per cell</text>
+  <text x="756" y="214" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">  mean_score, completion_rate</text>
+  <text x="756" y="230" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">  tokens, turns, wall_clock</text>
+  <text x="756" y="246" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">  invented_commands, fallback_to_sql</text>
+  <text x="756" y="262" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">  IRR delta when double-scored</text>
+
+  <line x1="756" y1="276" x2="1144" y2="276" stroke="#c4b99a" stroke-width="1"/>
+
+  <text x="756" y="296" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#2c2417">jig render &lt;json&gt;</text>
+  <text x="900" y="296" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">re-emit Markdown offline</text>
+  <text x="756" y="312" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#2c2417">jig compare a.json b.json</text>
+  <text x="900" y="312" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">per-cell delta, no API</text>
+  <text x="756" y="328" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#2c2417">jig check --binary &lt;bin&gt;</text>
+  <text x="900" y="328" font-family="'IBM Plex Mono', monospace" font-size="9" fill="#6b5d4f">rubric drift detection</text>
+
+  <!-- Footer -->
+  <line x1="40" y1="370" x2="1160" y2="370" stroke="#c4b99a" stroke-width="1"/>
+  <text x="600" y="392" font-family="'IBM Plex Mono', monospace" font-size="10" fill="#6b5d4f" text-anchor="middle">a tool's surface is the shape an agent reaches for &#183; measure it, then reshape it</text>
+  <text x="590" y="416" text-anchor="middle" fill="#2c2417" font-family="'IBM Plex Mono', monospace" font-size="9" font-weight="600">Built with GitLab</text>
+  <g transform="translate(634, 405) scale(0.045)">
+    <path d="M282.83,170.73l-.27-.69-26.14-68.22a6.81,6.81,0,0,0-2.69-3.24,7,7,0,0,0-8,.43,7,7,0,0,0-2.32,3.52l-17.65,54H154.29l-17.65-54A6.86,6.86,0,0,0,134.32,99a7,7,0,0,0-8-.43,6.87,6.87,0,0,0-2.69,3.24L97.44,170l-.26.69a48.54,48.54,0,0,0,16.1,56.1l.09.07.24.17,39.82,29.82,19.7,14.91,12,9.06a8.07,8.07,0,0,0,9.76,0l12-9.06,19.7-14.91,40.06-30,.1-.08A48.56,48.56,0,0,0,282.83,170.73Z" fill="#E24329"/>
+    <path d="M282.83,170.73l-.27-.69a88.3,88.3,0,0,0-35.15,15.8L190,229.25c19.55,14.79,36.57,27.64,36.57,27.64l40.06-30,.1-.08A48.56,48.56,0,0,0,282.83,170.73Z" fill="#FC6D26"/>
+    <path d="M153.43,256.89l19.7,14.91,12,9.06a8.07,8.07,0,0,0,9.76,0l12-9.06,19.7-14.91S209.55,244,190,229.25C170.45,244,153.43,256.89,153.43,256.89Z" fill="#FCA326"/>
+    <path d="M132.58,185.84A88.19,88.19,0,0,0,97.44,170l-.26.69a48.54,48.54,0,0,0,16.1,56.1l.09.07.24.17,39.82,29.82s17-12.85,36.57-27.64Z" fill="#FC6D26"/>
+  </g>
+</svg>
