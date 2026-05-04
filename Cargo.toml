@@ -18,6 +18,9 @@ exclude = [
     "agent-shape-reports/*",
     "*.checkpoint.jsonl",
     "/jig",
+    ".claude/*",
+    "AGENTS.md",
+    ".gitattributes",
 ]
 
 [lib]

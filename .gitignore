@@ -7,6 +7,12 @@ Cargo.lock.bak
 .idea/
 .vscode/
 
+# `.claude/` is local-only: rune subscriptions, lockfile, and synced skill
+# content are all per-developer state. Run `rune setup` then `rune sync` on
+# a fresh clone to materialize.
+.claude/
+AGENTS.md
+
 # Local tidy/audit notes (not for publish or remote)
 TIDY.md
 
