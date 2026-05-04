@@ -147,5 +147,5 @@ shelling out to the CLI.
 MIT. See [LICENSE](LICENSE).
 
 ---
-Built by Andrew Dunn, 2026.
+Part of [Nomograph Labs](https://nomograph.ai).
 
