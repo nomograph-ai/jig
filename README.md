@@ -11,6 +11,8 @@ Agent-shape testing harness. Runs runtime-in-the-loop task batteries
 against a tool's CLI to measure first-try command success, tokens per
 task, turns to completion, and invented-command count.
 
+## What it is
+
 Each subject tool ships an `agent-shape.toml` declaring a fixture, a
 battery of tasks (tuning + holdout), success criteria, and an LLM
 judge rubric. `jig` spawns the agent runtime against the fixture,
