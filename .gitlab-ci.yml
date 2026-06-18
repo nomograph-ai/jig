@@ -7,7 +7,7 @@ default:
 
 include:
   - template: Jobs/Secret-Detection.gitlab-ci.yml
-  - component: gitlab.com/nomograph/pipeline/tool-rust@v4.1.7
+  - component: gitlab.com/nomograph/pipeline/tool-rust@v4.4.2
     inputs:
       binary_name: jig
       project_description: "Agent-shape testing harness: runtime-in-the-loop batteries, LLM-as-judge scoring."
@@ -16,7 +16,7 @@ include:
 
 check-symlinks:
   stage: lint
-  image: alpine:3.19
+  image: alpine:3.24
   before_script:
     - apk add --no-cache bash git
   script:
