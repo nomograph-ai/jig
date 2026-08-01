@@ -1,6 +1,11 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "gitlab>nomograph/pipeline:renovate-config"
+  "extends": ["gitlab>nomograph/pipeline:renovate-config"],
+  "dependencyDashboardApproval": true,
+  "description": [
+    "PARKED 2026-08-01, tracce pattern (thegredc estate). Last real human commit 2026-05-03 (gitignore hygiene); 27 renovate MRs in the prior 90 days serviced a repo nobody was working in.",
+    "dependencyDashboardApproval at the TOP level: nothing raises a merge request on its own -- not even patches. Everything queues as checkboxes on the Dependency Dashboard, visible but silent.",
+    "This is a PARK, not an abandonment, and deliberately NOT enabled:false. Renovate applies vulnerabilityAlerts last with dashboard approval defaulted off, so a vulnerable dependency still raises an MR immediately -- supply-chain posture stays intact on an unwatched repo.",
+    "TO UNPARK when work resumes: delete the dependencyDashboardApproval key and this description. Expect a backlog batch; tick dashboard entries in groups."
   ]
 }
