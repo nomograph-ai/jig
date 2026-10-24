@@ -3,7 +3,7 @@
 # Pipeline structure provided by nomograph/pipeline tool-rust@v4.1.7.
 
 default:
-  tags: [storr]
+  tags: [anvil]
 
 include:
   - component: gitlab.com/nomograph/pipeline/tool-rust@v5.7.0
